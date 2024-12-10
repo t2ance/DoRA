@@ -12,6 +12,10 @@ spec:
         "nvidia-smi;
          git clone https://github.com/t2ance/DoRA.git;
          cd DoRA;
+         cd commonsense_reasoning;
+         conda create -n dora_llama python=3.10;
+         conda activate dora_llama;
+         pip install -r requirements.txt;
          jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token='' --no-browser --allow-root;
          "
       ]

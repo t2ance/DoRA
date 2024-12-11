@@ -8,13 +8,12 @@
 
 import os
 import sys
-from typing import List
+from typing import List, Union
 
 import fire
 import torch
 import transformers
 from datasets import load_dataset
-from typing import List, Optional, Union
 
 """
 Unused imports:
@@ -32,7 +31,7 @@ from peft import (  # noqa: E402
     prepare_model_for_int8_training,
     set_peft_model_state_dict,
 )
-from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer, AutoModel  # noqa: F402
+from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer  # noqa: F402
 
 
 def train(

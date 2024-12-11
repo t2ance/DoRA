@@ -10,7 +10,7 @@ spec:
       command: [ "/bin/bash","-c" ]
       args: [
         "nvidia-smi;
-         git clone https://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@github.com/t2ance/DoRA.git;
+         git clone https://github.com/t2ance/DoRA.git;
          cd DoRA;
          cd commonsense_reasoning;
          conda create -n dora_llama python=3.10;

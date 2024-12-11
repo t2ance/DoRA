@@ -35,8 +35,8 @@ from ..utils import PeftConfig, PeftType, transpose
 
 
 def is_bnb_available():
-    # return importlib.util.find_spec("bitsandbytes") is not None
-    return False
+    return importlib.util.find_spec("bitsandbytes") is not None
+    # return False
 
 
 if is_bnb_available():

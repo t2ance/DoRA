@@ -14,12 +14,19 @@ spec:
          cd DoRA;
          cd commonsense_reasoning;
          conda create -n dora_llama python=3.10;
+         echo 'created';
          conda activate dora_llama;
+         echo 'activate';
          pip install -r requirements.txt;
-         jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token='' --no-browser --allow-root;
+         echo 'installed';
+         bash ./download_data.sh;
+         echo 'downloaded';
+         sh llama_7B_Dora.sh 32 64 ./finetuned_result/dora_r32 0;
+         echo 'run';
          "
       ]
-#         jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
+#              jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token='' --no-browser --allow-root;
+      #         jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
       volumeMounts:
         - mountPath: /data
           name: peijia-volume3

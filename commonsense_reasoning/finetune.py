@@ -8,6 +8,7 @@
 
 import os
 import sys
+from dataclasses import field
 from typing import List, Union
 
 import fire
@@ -33,6 +34,11 @@ from peft import (  # noqa: E402
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer  # noqa: F402
 
 
+class PEFTTrainingArguments(transformers.TrainingArguments):
+    outer_learning_rate: float = field(default=5e-5, metadata={"help": "The initial learning rate for AdamW."})
+    outer_weight_decay: float = field(default=0.0, metadata={"help": "Weight decay for AdamW if we apply some."})
+
+
 def train(
         # model/data params
         base_model: str = "",  # the only required argument
@@ -46,6 +52,8 @@ def train(
         num_epochs: int = 3,
         learning_rate: float = 3e-4,
         weight_decay: float = 0.0,
+        outer_learning_rate: float = 3e-4,
+        outer_weight_decay: float = 0.0,
         cutoff_len: int = 256,
         val_set_size: int = 2000,
         use_gradient_checkpointing: bool = False,
@@ -317,13 +325,15 @@ def train(
             train_dataset=inner_train_data,
             outer_train_dataset=outer_train_data,
             eval_dataset=val_data,
-            args=transformers.TrainingArguments(
+            args=PEFTTrainingArguments(
                 per_device_train_batch_size=micro_batch_size,
                 gradient_accumulation_steps=gradient_accumulation_steps,
                 warmup_steps=100,
                 num_train_epochs=num_epochs,
                 learning_rate=learning_rate,
                 weight_decay=weight_decay,
+                outer_learning_rate=outer_learning_rate,
+                outer_weight_decay=outer_weight_decay,
                 fp16=True,
                 logging_steps=10,
                 optim="adamw_torch",
@@ -358,7 +368,7 @@ def train(
             model=model,
             train_dataset=train_data,
             eval_dataset=val_data,
-            args=transformers.TrainingArguments(
+            args=PEFTTrainingArguments(
                 per_device_train_batch_size=micro_batch_size,
                 gradient_accumulation_steps=gradient_accumulation_steps,
                 warmup_steps=100,
@@ -475,7 +485,7 @@ class BiDoRATrainer(transformers.Trainer):
 
         return self.accelerator.prepare(DataLoader(dataset, **dataloader_params))
 
-    def create_optimizer(self, inner: bool = True):
+    def create_optimizer(self):
         """
         Setup the optimizer.
 
@@ -485,7 +495,6 @@ class BiDoRATrainer(transformers.Trainer):
         from torch.optim import AdamW
 
         optimizer_kwargs = {
-            "lr": self.args.learning_rate,
             "betas": (self.args.adam_beta1, self.args.adam_beta2),
             "eps": self.args.adam_epsilon,
             "fused": True
@@ -505,11 +514,11 @@ class BiDoRATrainer(transformers.Trainer):
 
         inner_optimizer = AdamW([{
             "params": inner_params_list, "weight_decay": self.args.weight_decay,
-        }], **optimizer_kwargs)
+        }], **{**optimizer_kwargs, "lr": self.args.learning_rate})
 
         outer_optimizer = AdamW([{
-            "params": outer_params_list, "weight_decay": self.args.weight_decay,
-        }], **optimizer_kwargs)
+            "params": outer_params_list, "weight_decay": self.args.outer_weight_decay,
+        }],**{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
 
         return inner_optimizer, outer_optimizer
 

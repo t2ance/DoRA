@@ -33,7 +33,6 @@ class PeftType(str, enum.Enum):
     DORA = "DORA"
 
 
-
 class TaskType(str, enum.Enum):
     SEQ_CLS = "SEQ_CLS"
     SEQ_2_SEQ_LM = "SEQ_2_SEQ_LM"

@@ -5,21 +5,19 @@
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
+import argparse
 import copy
 import json
 import os
 import re
 import sys
-import argparse
-
-import fire
 
 import torch
 
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from peft import PeftModel
 from tqdm import tqdm
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
+from transformers import GenerationConfig, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -84,8 +82,8 @@ def main(
 
     if args.adapter == "LoRA" or args.adapter == "DoRA":
         print("Merge LoRA/DoRA weights into the original weights")
-        key_list = [(key,module) for key, module in model.model.named_modules()]
-        for key,module in key_list:
+        key_list = [(key, module) for key, module in model.model.named_modules()]
+        for key, module in key_list:
             if isinstance(model.peft_config.target_modules, str):
                 target_module_found = re.fullmatch(model.peft_config.target_modules, key)
             else:
@@ -96,8 +94,9 @@ def main(
                     if isinstance(model.peft_config.Wdecompose_target_modules, str):
                         wdecompose_target_module_found = re.fullmatch(model.peft_config.Wdecompose_target_modules, key)
                     else:
-                        wdecompose_target_module_found = any(key.endswith(target_key) for target_key in model.peft_config.Wdecompose_target_modules)
-                else: 
+                        wdecompose_target_module_found = any(
+                            key.endswith(target_key) for target_key in model.peft_config.Wdecompose_target_modules)
+                else:
                     wdecompose_target_module_found = False
             else:
                 wdecompose_target_module_found = False
@@ -115,7 +114,6 @@ def main(
                 # print(f"module.merge_weights {module.merge_weights}")
                 module.merge_weights = True
                 module.train(mode=False)
-
 
     total = len(batches)
     correct = 0
@@ -198,20 +196,23 @@ def load_data(args) -> list:
     json_data = json.load(open(file_path, 'r'))
     return json_data
 
+
 def create_batch(dataset, batch_size):
     batches = []
-    num_batch = len(dataset)//batch_size if len(dataset) % batch_size == 0 else len(dataset)//batch_size + 1
+    num_batch = len(dataset) // batch_size if len(dataset) % batch_size == 0 else len(dataset) // batch_size + 1
     for i in range(num_batch):
-        batch = dataset[i*batch_size: min((i+1)*batch_size, len(dataset))]
+        batch = dataset[i * batch_size: min((i + 1) * batch_size, len(dataset))]
         batches.append(batch)
     return batches
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', choices=["boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Challenge", "ARC-Easy", "openbookqa"],
+    parser.add_argument('--dataset',
+                        choices=["boolq", "piqa", "social_i_qa", "hellaswag", "winogrande", "ARC-Challenge", "ARC-Easy",
+                                 "openbookqa"],
                         required=True)
-    parser.add_argument('--model', choices=['LLaMA-7B', "LLaMA-13B",'LLaMA2-7B','LLaMA3-8B'], required=True)
+    parser.add_argument('--model', choices=['LLaMA-7B', "LLaMA-13B", 'LLaMA2-7B', 'LLaMA3-8B'], required=True)
     parser.add_argument('--adapter', choices=['LoRA', 'AdapterP', 'AdapterH', 'Parallel', 'DoRA'],
                         required=True)
     parser.add_argument('--base_model', required=True)
@@ -257,12 +258,12 @@ def load_model(args) -> tuple:
             torch_dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True,
-        ) # fix zwq
+        )  # fix zwq
         model = PeftModel.from_pretrained(
             model,
             lora_weights,
             torch_dtype=torch.float16,
-            device_map={"":0}
+            device_map={"": 0}
         )
     elif device == "mps":
         model = AutoModelForCausalLM.from_pretrained(

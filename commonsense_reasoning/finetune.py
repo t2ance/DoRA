@@ -8,7 +8,7 @@
 
 import os
 import sys
-from typing import List, Union
+from typing import List, Union, Dict, Any
 
 import fire
 import torch
@@ -79,6 +79,7 @@ def train(
         wandb_watch: str = "",  # options: false | gradients | all
         wandb_log_model: str = "",  # options: false | true
         resume_from_checkpoint: str = None,  # either training checkpoint or final adapter
+        bilevel: bool = False
 ):
     print(
         f"Finetuning model with params:\n"
@@ -252,7 +253,10 @@ def train(
             num_virtual_tokens=num_virtual_tokens,
             task_type="CAUSAL_LM",
         )
-    model = get_peft_model(model, config)
+    else:
+        raise NotImplementedError(f'Unknown adapter_name {adapter_name}')
+    model.add_adapter(config)
+    # model = get_peft_model(model, config)
     if adapter_name == "prefix-tuning":
         model.to('cuda')
 
@@ -304,55 +308,115 @@ def train(
 
     print(f'Training dataset size: {len(train_data)}')
     print(f'Validation dataset size: {len(val_data)}')
-    trainer = transformers.Trainer(
-        model=model,
-        train_dataset=train_data,
-        eval_dataset=val_data,
-        args=transformers.TrainingArguments(
-            per_device_train_batch_size=micro_batch_size,
-            gradient_accumulation_steps=gradient_accumulation_steps,
-            warmup_steps=100,
-            num_train_epochs=num_epochs,
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
-            fp16=True,
-            logging_steps=10,
-            optim="adamw_torch",
-            evaluation_strategy="steps" if val_set_size > 0 else "no",
-            save_strategy="steps",
-            eval_steps=eval_step if val_set_size > 0 else None,
-            save_steps=save_step,
-            output_dir=output_dir,
-            save_total_limit=3,
-            load_best_model_at_end=True if val_set_size > 0 else False,
-            ddp_find_unused_parameters=False if ddp else None,
-            group_by_length=group_by_length,
-            report_to="wandb" if use_wandb else None,
-            run_name=wandb_run_name if use_wandb else None,
-        ),
-        data_collator=transformers.DataCollatorForSeq2Seq(
-            tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
-        ),
-    )
-    model.config.use_cache = False
-
-    old_state_dict = model.state_dict
-    model.state_dict = (
-        lambda self, *_, **__: get_peft_model_state_dict(
-            self, old_state_dict()
+    if bilevel:
+        trainer = transformers.Trainer(
+            model=model,
+            train_dataset=train_data,
+            eval_dataset=val_data,
+            args=transformers.TrainingArguments(
+                per_device_train_batch_size=micro_batch_size,
+                gradient_accumulation_steps=gradient_accumulation_steps,
+                warmup_steps=100,
+                num_train_epochs=num_epochs,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                fp16=True,
+                logging_steps=10,
+                optim="adamw_torch",
+                evaluation_strategy="steps" if val_set_size > 0 else "no",
+                save_strategy="steps",
+                eval_steps=eval_step if val_set_size > 0 else None,
+                save_steps=save_step,
+                output_dir=output_dir,
+                save_total_limit=3,
+                load_best_model_at_end=True if val_set_size > 0 else False,
+                ddp_find_unused_parameters=False if ddp else None,
+                group_by_length=group_by_length,
+                report_to="wandb" if use_wandb else None,
+                run_name=wandb_run_name if use_wandb else None,
+            ),
+            data_collator=transformers.DataCollatorForSeq2Seq(
+                tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+            )
         )
-    ).__get__(model, type(model))
+        model.config.use_cache = False
 
-    if torch.__version__ >= "2" and sys.platform != "win32":
-        model = torch.compile(model)
+        old_state_dict = model.state_dict
+        model.state_dict = (
+            lambda self, *_, **__: get_peft_model_state_dict(
+                self, old_state_dict()
+            )
+        ).__get__(model, type(model))
 
-    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
-    model.save_pretrained(output_dir)
+        trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    else:
+        trainer = transformers.Trainer(
+            model=model,
+            train_dataset=train_data,
+            eval_dataset=val_data,
+            args=transformers.TrainingArguments(
+                per_device_train_batch_size=micro_batch_size,
+                gradient_accumulation_steps=gradient_accumulation_steps,
+                warmup_steps=100,
+                num_train_epochs=num_epochs,
+                learning_rate=learning_rate,
+                weight_decay=weight_decay,
+                fp16=True,
+                logging_steps=10,
+                optim="adamw_torch",
+                evaluation_strategy="steps" if val_set_size > 0 else "no",
+                save_strategy="steps",
+                eval_steps=eval_step if val_set_size > 0 else None,
+                save_steps=save_step,
+                output_dir=output_dir,
+                save_total_limit=3,
+                load_best_model_at_end=True if val_set_size > 0 else False,
+                ddp_find_unused_parameters=False if ddp else None,
+                group_by_length=group_by_length,
+                report_to="wandb" if use_wandb else None,
+                run_name=wandb_run_name if use_wandb else None,
+            ),
+            data_collator=transformers.DataCollatorForSeq2Seq(
+                tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
+            )
+        )
+        model.config.use_cache = False
 
-    print(
-        "\n If there's a warning about missing keys above, please disregard :)"
-    )
+        old_state_dict = model.state_dict
+        model.state_dict = (
+            lambda self, *_, **__: get_peft_model_state_dict(
+                self, old_state_dict()
+            )
+        ).__get__(model, type(model))
+
+        if torch.__version__ >= "2" and sys.platform != "win32":
+            model = torch.compile(model)
+
+        trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+
+        model.save_pretrained(output_dir)
+
+        print(
+            "\n If there's a warning about missing keys above, please disregard :)"
+        )
+
+
+import torch.nn as nn
+
+
+class BiDoRATrainer(transformers.Trainer):
+    def __init__(self):
+        super().__init__()
+        ...
+
+    def training_step(
+            self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], num_items_in_batch=None
+    ) -> torch.Tensor:
+        ...
+
+    def _evaluate(self, trial, ignore_keys_for_eval, skip_scheduler=False):
+        ...
 
 
 def generate_prompt(data_point):

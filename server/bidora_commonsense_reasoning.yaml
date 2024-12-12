@@ -1,13 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dora-test
+  name: bidora-commonsense-reasoning
 spec:
   template:
     spec:
       containers:
         - name: gpu-container
-          #          image: nvcr.io/nvidia/pytorch:23.02-py3
           image: continuumio/anaconda3
           command: [ "/bin/bash","-c" ]
           args: [
@@ -25,12 +24,9 @@ spec:
              echo 'installed!';
              bash ./download_data.sh;
              echo 'downloaded!';
-             sh llama_7B_Dora.sh 32 64 ./finetuned_result/dora_r32 0;
+             sh llama_7B_BiDora.sh 32 64 ./finetuned_result/dora_r32 0;
              "
           ]
-          #             echo 'run!';
-          #             python -m bitsandbytes;
-          #             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token='' --no-browser --allow-root;
           #             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
           volumeMounts:
             - mountPath: /data

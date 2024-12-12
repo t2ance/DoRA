@@ -481,9 +481,10 @@ class BiDoRATrainer(transformers.Trainer):
             dataloader_params["sampler"] = self._get_train_sampler()
             dataloader_params["drop_last"] = self.args.dataloader_drop_last
             dataloader_params["worker_init_fn"] = seed_worker
-            dataloader_params["prefetch_factor"] = self.args.dataloader_prefetch_factor
+            dataloader_params["prefetch_factor"] = None
 
-        return self.accelerator.prepare(DataLoader(dataset, **dataloader_params))
+        # return self.accelerator.prepare(DataLoader(dataset, **dataloader_params))
+        return DataLoader(dataset, **dataloader_params)
 
     def create_optimizer(self):
         """

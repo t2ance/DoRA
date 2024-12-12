@@ -8,10 +8,9 @@
 
 import os
 import sys
-from typing import List, Union, Dict, Any
+from typing import List, Union
 
 import fire
-import torch
 import transformers
 from datasets import load_dataset
 
@@ -255,8 +254,8 @@ def train(
         )
     else:
         raise NotImplementedError(f'Unknown adapter_name {adapter_name}')
-    model.add_adapter(config)
-    # model = get_peft_model(model, config)
+    # model.add_adapter(config)
+    model = get_peft_model(model, config)
     if adapter_name == "prefix-tuning":
         model.to('cuda')
 
@@ -309,9 +308,14 @@ def train(
     print(f'Training dataset size: {len(train_data)}')
     print(f'Validation dataset size: {len(val_data)}')
     if bilevel:
-        trainer = transformers.Trainer(
+        train_split = train_data.train_test_split(test_size=0.2)
+        inner_train_data, outer_train_data = train_split['train'], train_split['test']
+        print(f'Inner training dataset size: {len(inner_train_data)}')
+        print(f'Outer training dataset size: {len(outer_train_data)}')
+        trainer = BiDoRATrainer(
             model=model,
-            train_dataset=train_data,
+            train_dataset=inner_train_data,
+            outer_train_dataset=outer_train_data,
             eval_dataset=val_data,
             args=transformers.TrainingArguments(
                 per_device_train_batch_size=micro_batch_size,
@@ -347,7 +351,6 @@ def train(
                 self, old_state_dict()
             )
         ).__get__(model, type(model))
-
 
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     else:
@@ -402,21 +405,174 @@ def train(
         )
 
 
-import torch.nn as nn
+from transformers.trainer import *
+from betty.engine import Engine
+from betty.problems import ImplicitProblem
+import wandb
+
+
+class Inner(ImplicitProblem):
+    def training_step(self, batch):
+        batch = {key: value.to(self.device) for key, value in batch.items()}
+        loss = self.module(**batch, return_dict=True).loss
+        wandb.log({
+            "Inner/batch loss": loss.cpu().item(),
+            "Inner/loss": loss.cpu().item(),
+            "Inner/lr": self.optimizer.param_groups[0]['lr']
+        }, step=self._global_step)
+        return loss
+
+
+class Outer(ImplicitProblem):
+    def training_step(self, batch):
+        batch = {key: value.to(self.device) for key, value in batch.items()}
+        loss = self.inner.module(**batch, return_dict=True).loss
+        wandb.log({
+            "Inner/batch loss": loss.cpu().item(),
+            "Inner/loss": loss.cpu().item(),
+            "Inner/lr": self.optimizer.param_groups[0]['lr']
+        }, step=self._global_step)
+        return loss
+
+
+class BilevelEngine(Engine):
+
+    @torch.no_grad()
+    def validation(self):
+        print('validation')
 
 
 class BiDoRATrainer(transformers.Trainer):
-    def __init__(self):
-        super().__init__()
-        ...
 
-    def training_step(
-            self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]], num_items_in_batch=None
-    ) -> torch.Tensor:
-        ...
+    def __init__(self, outer_train_dataset: Optional[Union[Dataset, IterableDataset, "datasets.Dataset"]] = None,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.args = kwargs['args']
+        self.outer_train_dataset = outer_train_dataset
 
-    def _evaluate(self, trial, ignore_keys_for_eval, skip_scheduler=False):
-        ...
+    def get_train_dataloader(self, inner: bool = True) -> DataLoader:
+        """
+        Returns the training [`~torch.utils.data.DataLoader`].
+
+        Will use no sampler if `train_dataset` does not implement `__len__`, a random sampler (adapted to distributed
+        training if necessary) otherwise.
+
+        Subclass and override this method if you want to inject some custom behavior.
+        """
+        if inner:
+            dataset = self.train_dataset
+        else:
+            dataset = self.outer_train_dataset
+        if dataset is None:
+            raise ValueError("Trainer: training requires a train_dataset.")
+
+        train_dataset = dataset
+        data_collator = self.data_collator
+        if is_datasets_available() and isinstance(train_dataset, datasets.Dataset):
+            train_dataset = self._remove_unused_columns(train_dataset, description="training")
+        else:
+            data_collator = self._get_collator_with_removed_columns(data_collator, description="training")
+
+        dataloader_params = {
+            "batch_size": self._train_batch_size,
+            "collate_fn": data_collator,
+            "num_workers": self.args.dataloader_num_workers,
+            "pin_memory": self.args.dataloader_pin_memory,
+            "persistent_workers": self.args.dataloader_persistent_workers,
+        }
+
+        if not isinstance(train_dataset, torch.utils.data.IterableDataset):
+            dataloader_params["sampler"] = self._get_train_sampler()
+            dataloader_params["drop_last"] = self.args.dataloader_drop_last
+            dataloader_params["worker_init_fn"] = seed_worker
+            dataloader_params["prefetch_factor"] = self.args.dataloader_prefetch_factor
+
+        return self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+
+    def create_optimizer(self, inner: bool = True):
+        """
+        Setup the optimizer.
+
+        We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
+        Trainer's init through `optimizers`, or subclass and override this method in a subclass.
+        """
+        from torch.optim import AdamW
+
+        optimizer_kwargs = {
+            "lr": self.args.learning_rate,
+            "betas": (self.args.adam_beta1, self.args.adam_beta2),
+            "eps": self.args.adam_epsilon,
+            "fused": True
+        }
+        inner_params_list = []
+        outer_params_list = []
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                if 'weight_m_wdecomp' in name:
+                    print(f'{name} is trainable at lower level')
+                    inner_params_list.append(param)
+                else:
+                    outer_params_list.append(param)
+                    print(f'{name} is trainable at upper level')
+            else:
+                print(f'{name} is not trainable')
+
+        inner_optimizer = AdamW([{
+            "params": inner_params_list, "weight_decay": self.args.weight_decay,
+        }], **optimizer_kwargs)
+
+        outer_optimizer = AdamW([{
+            "params": outer_params_list, "weight_decay": self.args.weight_decay,
+        }], **optimizer_kwargs)
+
+        return inner_optimizer, outer_optimizer
+
+    def create_scheduler(self, num_training_steps: int, inner_optimizer: torch.optim.Optimizer = None,
+                         outer_optimizer: torch.optim.Optimizer = None):
+
+        inner_lr_scheduler = get_scheduler(
+            self.args.lr_scheduler_type,
+            optimizer=inner_optimizer,
+            num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+            num_training_steps=num_training_steps,
+            scheduler_specific_kwargs=self.args.lr_scheduler_kwargs,
+        )
+
+        outer_lr_scheduler = get_scheduler(
+            self.args.lr_scheduler_type,
+            optimizer=inner_optimizer,
+            num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+            num_training_steps=num_training_steps,
+            scheduler_specific_kwargs=self.args.lr_scheduler_kwargs,
+        )
+
+        return inner_lr_scheduler, outer_lr_scheduler
+
+    def train(
+            self,
+            resume_from_checkpoint: Optional[Union[str, bool]] = None,
+            trial: Union["optuna.Trial", Dict[str, Any]] = None,
+            ignore_keys_for_eval: Optional[List[str]] = None,
+            **kwargs,
+    ):
+        from betty.configs import EngineConfig, Config
+        inner_optimizer, outer_optimizer = self.create_optimizer()
+        inner_scheduler, outer_scheduler = self.create_scheduler(
+            self.args.max_steps, inner_optimizer, outer_optimizer)
+        outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1)
+        inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1)
+        engine_config = EngineConfig(
+            train_iters=self.args.max_steps, valid_step=self.args.eval_steps)
+        outer = Outer(name="outer", module=self.model, optimizer=outer_optimizer, scheduler=outer_scheduler,
+                      config=outer_config, train_data_loader=self.get_train_dataloader(inner=True))
+        inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,
+                      config=inner_config, train_data_loader=self.get_train_dataloader(inner=False))
+        problems = [outer, inner]
+        l2u = {inner: [outer]}
+        u2l = {outer: [inner]}
+        dependencies = {"l2u": l2u, "u2l": u2l}
+        engine = BilevelEngine(config=engine_config, problems=problems, dependencies=dependencies)
+        engine.run()
 
 
 def generate_prompt(data_point):

@@ -371,15 +371,15 @@ class PeftModelForSequenceClassification(PeftModel):
         _set_trainable(self)
 
     def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs,
+            self,
+            input_ids=None,
+            attention_mask=None,
+            inputs_embeds=None,
+            labels=None,
+            output_attentions=None,
+            output_hidden_states=None,
+            return_dict=None,
+            **kwargs,
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -432,15 +432,15 @@ class PeftModelForSequenceClassification(PeftModel):
             return self.base_model(inputs_embeds=inputs_embeds, **kwargs)
 
     def _prefix_tuning_forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs,
+            self,
+            input_ids=None,
+            attention_mask=None,
+            inputs_embeds=None,
+            labels=None,
+            output_attentions=None,
+            output_hidden_states=None,
+            return_dict=None,
+            **kwargs,
     ):
         batch_size = input_ids.shape[0]
         past_key_values = self.get_prompt(batch_size)
@@ -530,15 +530,15 @@ class PeftModelForCausalLM(PeftModel):
         self.base_model_prepare_inputs_for_generation = self.base_model.prepare_inputs_for_generation
 
     def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs,
+            self,
+            input_ids=None,
+            attention_mask=None,
+            inputs_embeds=None,
+            labels=None,
+            output_attentions=None,
+            output_hidden_states=None,
+            return_dict=None,
+            **kwargs,
     ):
         if not isinstance(self.peft_config, PromptLearningConfig):
             return self.base_model(
@@ -650,7 +650,7 @@ class PeftModelForCausalLM(PeftModel):
                         past_key_values = tuple(
                             past_key_value.to(self.base_model_torch_dtype) for past_key_value in past_key_values
                         )
-                        
+
                 model_kwargs["past_key_values"] = past_key_values
             else:
                 if model_kwargs["past_key_values"] is None:
@@ -693,18 +693,18 @@ class PeftModelForSeq2SeqLM(PeftModel):
         )
 
     def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        inputs_embeds=None,
-        decoder_input_ids=None,
-        decoder_attention_mask=None,
-        decoder_inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs,
+            self,
+            input_ids=None,
+            attention_mask=None,
+            inputs_embeds=None,
+            decoder_input_ids=None,
+            decoder_attention_mask=None,
+            decoder_inputs_embeds=None,
+            labels=None,
+            output_attentions=None,
+            output_hidden_states=None,
+            return_dict=None,
+            **kwargs,
     ):
         if not isinstance(self.peft_config, PromptLearningConfig):
             return self.base_model(
@@ -776,7 +776,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
                 return self.base_model(inputs_embeds=inputs_embeds, **kwargs)
             elif self.peft_config.num_transformer_submodules == 2:
                 decoder_inputs_embeds = torch.cat(
-                    (prompts[:, self.peft_config.num_virtual_tokens :], decoder_inputs_embeds), dim=1
+                    (prompts[:, self.peft_config.num_virtual_tokens:], decoder_inputs_embeds), dim=1
                 )
                 return self.base_model(
                     inputs_embeds=inputs_embeds, decoder_inputs_embeds=decoder_inputs_embeds, **kwargs
@@ -869,15 +869,15 @@ class PeftModelForTokenClassification(PeftModel):
         _set_trainable(self)
 
     def forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs,
+            self,
+            input_ids=None,
+            attention_mask=None,
+            inputs_embeds=None,
+            labels=None,
+            output_attentions=None,
+            output_hidden_states=None,
+            return_dict=None,
+            **kwargs,
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -930,15 +930,15 @@ class PeftModelForTokenClassification(PeftModel):
             return self.base_model(inputs_embeds=inputs_embeds, **kwargs)
 
     def _prefix_tuning_forward(
-        self,
-        input_ids=None,
-        attention_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-        **kwargs,
+            self,
+            input_ids=None,
+            attention_mask=None,
+            inputs_embeds=None,
+            labels=None,
+            output_attentions=None,
+            output_hidden_states=None,
+            return_dict=None,
+            **kwargs,
     ):
         batch_size = input_ids.shape[0]
         past_key_values = self.get_prompt(batch_size)

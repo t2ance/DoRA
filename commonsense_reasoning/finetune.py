@@ -40,7 +40,7 @@ def train(
         data_path: str = "yahma/alpaca-cleaned",
         output_dir: str = "./lora-alpaca",
         adapter_name: str = "lora",
-        load_8bit : bool = False,
+        load_8bit: bool = False,
         # training hyperparams
         batch_size: int = 128,
         micro_batch_size: int = 4,
@@ -155,7 +155,6 @@ def train(
             trust_remote_code=True,
         )
 
-    
     if model.config.model_type == "llama":
         # Due to the name of transformers' LlamaTokenizer, we have to do this
         # need to handle llama 3 separately
@@ -302,7 +301,9 @@ def train(
         # keeps Trainer from trying its own DataParallelism when more than 1 gpu is available
         model.is_parallelizable = True
         model.model_parallel = True
-    
+
+    print(f'Training dataset size: {len(train_data)}')
+    print(f'Validation dataset size: {len(val_data)}')
     trainer = transformers.Trainer(
         model=model,
         train_dataset=train_data,
@@ -353,8 +354,6 @@ def train(
         "\n If there's a warning about missing keys above, please disregard :)"
     )
 
-    
-
 
 def generate_prompt(data_point):
     # sorry about the formatting disaster gotta move fast
@@ -368,7 +367,7 @@ def generate_prompt(data_point):
                 {data_point["input"]}
                 
                 ### Response:
-                {data_point["output"]}""" # noqa: E501
+                {data_point["output"]}"""  # noqa: E501
     else:
         return f"""Below is an instruction that describes a task. Write a response that appropriately completes the request.  
 
@@ -376,7 +375,7 @@ def generate_prompt(data_point):
                 {data_point["instruction"]}
                 
                 ### Response:
-                {data_point["output"]}""" # noqa: E501
+                {data_point["output"]}"""  # noqa: E501
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
+export WANDB_PROJECT="dora"
 
 CUDA_VISIBLE_DEVICES=$4 python finetune.py \
     --base_model 'yahma/llama-7b-hf' \

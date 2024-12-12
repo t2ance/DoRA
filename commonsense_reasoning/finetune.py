@@ -444,32 +444,18 @@ class BilevelEngine(Engine):
 
 class BiDoRATrainer(transformers.Trainer):
 
-    def __init__(self, outer_train_dataset: Optional[Union[Dataset, IterableDataset, "datasets.Dataset"]] = None,
-                 **kwargs):
+    def __init__(self, outer_train_dataset=None, **kwargs):
         super().__init__(**kwargs)
         self.args = kwargs['args']
         self.outer_train_dataset = outer_train_dataset
 
-    def get_train_dataloader(self, inner: bool = True) -> DataLoader:
-        """
-        Returns the training [`~torch.utils.data.DataLoader`].
-
-        Will use no sampler if `train_dataset` does not implement `__len__`, a random sampler (adapted to distributed
-        training if necessary) otherwise.
-
-        Subclass and override this method if you want to inject some custom behavior.
-        """
-        if inner:
-            dataset = self.train_dataset
-        else:
-            dataset = self.outer_train_dataset
+    def get_train_dataloader(self, dataset=None) -> DataLoader:
         if dataset is None:
-            raise ValueError("Trainer: training requires a train_dataset.")
+            raise ValueError("Trainer: training requires a dataset.")
 
-        train_dataset = dataset
         data_collator = self.data_collator
-        if is_datasets_available() and isinstance(train_dataset, datasets.Dataset):
-            train_dataset = self._remove_unused_columns(train_dataset, description="training")
+        if is_datasets_available() and isinstance(dataset, datasets.Dataset):
+            dataset = self._remove_unused_columns(dataset, description="training")
         else:
             data_collator = self._get_collator_with_removed_columns(data_collator, description="training")
 
@@ -481,13 +467,13 @@ class BiDoRATrainer(transformers.Trainer):
             "persistent_workers": self.args.dataloader_persistent_workers,
         }
 
-        if not isinstance(train_dataset, torch.utils.data.IterableDataset):
+        if not isinstance(dataset, torch.utils.data.IterableDataset):
             dataloader_params["sampler"] = self._get_train_sampler()
             dataloader_params["drop_last"] = self.args.dataloader_drop_last
             dataloader_params["worker_init_fn"] = seed_worker
             dataloader_params["prefetch_factor"] = self.args.dataloader_prefetch_factor
 
-        return self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+        return self.accelerator.prepare(DataLoader(dataset, **dataloader_params))
 
     def create_optimizer(self, inner: bool = True):
         """
@@ -559,14 +545,15 @@ class BiDoRATrainer(transformers.Trainer):
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(
             self.args.max_steps, inner_optimizer, outer_optimizer)
-        outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1)
-        inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1)
+        outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision='fp16')
+        inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision='fp16')
         engine_config = EngineConfig(
             train_iters=self.args.max_steps, valid_step=self.args.eval_steps)
-        outer = Outer(name="outer", module=self.model, optimizer=outer_optimizer, scheduler=outer_scheduler,
-                      config=outer_config, train_data_loader=self.get_train_dataloader(inner=True))
+        outer = Outer(name="outer", module=None, optimizer=outer_optimizer, scheduler=outer_scheduler,
+                      config=outer_config,
+                      train_data_loader=self.get_train_dataloader(dataset=self.outer_train_dataset))
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,
-                      config=inner_config, train_data_loader=self.get_train_dataloader(inner=False))
+                      config=inner_config, train_data_loader=self.get_train_dataloader(dataset=self.train_dataset))
         problems = [outer, inner]
         l2u = {inner: [outer]}
         u2l = {outer: [inner]}

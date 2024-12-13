@@ -414,9 +414,41 @@ from transformers.trainer import *
 from betty.engine import Engine
 from betty.problems import ImplicitProblem
 import wandb
+from betty.utils import convert_tensor
 
 
-class Inner(ImplicitProblem):
+class BiDoRAProblem(ImplicitProblem):
+    def get_batch_single_loader(self, idx):
+        """
+        Load training batch from one of the user-provided data loader(s)
+
+        :return: New training batch
+        :rtype: Any
+        """
+        data_iterator = self.train_data_iterator[idx]
+        try:
+            batch = next(data_iterator)
+        except StopIteration:
+            if idx == 0:
+                self.epoch_callback_exec()
+            self.epoch_counter[idx] += 1
+            train_data_loader = self.train_data_loader[idx]
+            if self._strategy in ["distributed", "zero", "fsdp"]:
+                train_data_loader.set_epoch(self.epoch_counter[idx])
+            self.train_data_iterator[idx] = iter(train_data_loader)
+            batch = next(self.train_data_iterator[idx])
+        print('In get_batch_single_loader', batch)
+        if not isinstance(batch, dict):
+            print('batch is not dict')
+            batch = tuple(convert_tensor(value, self.device) for value in batch)
+        else:
+            for key, value in batch.items():
+                batch[key] = convert_tensor(value, self.device)
+        print('return from get_batch_single_loader', batch)
+        return batch
+
+
+class Inner(BiDoRAProblem):
     def training_step(self, batch):
         print(batch)
         batch = {key: value.to(self.device) for key, value in batch.items()}
@@ -429,7 +461,7 @@ class Inner(ImplicitProblem):
         return loss
 
 
-class Outer(ImplicitProblem):
+class Outer(BiDoRAProblem):
     def training_step(self, batch):
         batch = {key: value.to(self.device) for key, value in batch.items()}
         loss = self.inner.module(**batch, return_dict=True).loss
@@ -559,6 +591,7 @@ class BiDoRATrainer(transformers.Trainer):
         outer_dataloader = self.get_train_dataloader(dataset=self.outer_train_dataset)
         sample_batch = next(iter(inner_dataloader))
         print('Sample batch from inner loader')
+        print(sample_batch.keys())
         print(sample_batch)
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,
                       config=inner_config, train_data_loader=inner_dataloader)

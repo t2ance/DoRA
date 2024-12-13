@@ -437,15 +437,15 @@ class BiDoRAProblem(ImplicitProblem):
                 train_data_loader.set_epoch(self.epoch_counter[idx])
             self.train_data_iterator[idx] = iter(train_data_loader)
             batch = next(self.train_data_iterator[idx])
-        print('In get_batch_single_loader', batch)
-        print(type(batch))
-        if not isinstance(batch, dict):
-            print('batch is not dict')
-            batch = tuple(convert_tensor(value, self.device) for value in batch)
-        else:
-            for key, value in batch.items():
-                batch[key] = convert_tensor(value, self.device)
-        print('return from get_batch_single_loader', batch)
+        # print('In get_batch_single_loader', batch)
+        # print(type(batch))
+        # if not isinstance(batch, dict):
+        #     print('batch is not dict')
+        #     batch = tuple(convert_tensor(value, self.device) for value in batch)
+        # else:
+        for key, value in batch.items():
+            batch[key] = convert_tensor(value, self.device)
+        # print('return from get_batch_single_loader', batch)
         return batch
 
 

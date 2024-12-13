@@ -3,6 +3,7 @@ kind: Job
 metadata:
   name: bidora-commonsense-reasoning
 spec:
+  backoffLimit: 2
   template:
     spec:
       containers:
@@ -25,9 +26,9 @@ spec:
              bash ./download_data.sh;
              echo 'downloaded!';
              sh llama_7B_BiDora.sh 32 64 ./finetuned_result/bidora_r32 0;
-             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
              "
           ]
+          #             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
           volumeMounts:
             - mountPath: /data
               name: peijia-volume3

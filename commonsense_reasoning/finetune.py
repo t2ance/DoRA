@@ -557,7 +557,7 @@ class BiDoRATrainer(transformers.Trainer):
             train_iters=self.args.max_steps, valid_step=self.args.eval_steps)
         inner_dataloader = self.get_train_dataloader(dataset=self.train_dataset)
         outer_dataloader = self.get_train_dataloader(dataset=self.outer_train_dataset)
-        sample_batch = iter(inner_dataloader)
+        sample_batch = next(iter(inner_dataloader))
         print('Sample batch from inner loader')
         print(sample_batch)
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,

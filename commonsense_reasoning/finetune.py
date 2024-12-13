@@ -8,6 +8,7 @@
 import dataclasses
 import os
 import sys
+from abc import ABC
 from dataclasses import field
 from typing import List, Union
 
@@ -417,7 +418,7 @@ import wandb
 from betty.utils import convert_tensor
 
 
-class BiDoRAProblem(ImplicitProblem):
+class BiDoRAProblem(ImplicitProblem, ABC):
     def get_batch_single_loader(self, idx):
         """
         Load training batch from one of the user-provided data loader(s)
@@ -481,12 +482,16 @@ class BilevelEngine(Engine):
         print('validation')
 
 
+from dataclasses import asdict
+
+
 class BiDoRATrainer(transformers.Trainer):
 
     def __init__(self, outer_train_dataset=None, **kwargs):
         super().__init__(**kwargs)
-        self.args = kwargs['args']
+        self.args: PEFTTrainingArguments = kwargs['args']
         self.outer_train_dataset = outer_train_dataset
+        wandb.init(project='dora', name='bidora commonsense reasoning', config=asdict(self.args))
 
     def get_train_dataloader(self, dataset=None) -> DataLoader:
         if dataset is None:

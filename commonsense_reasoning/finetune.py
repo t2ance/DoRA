@@ -585,6 +585,8 @@ class BiDoRATrainer(transformers.Trainer):
             ignore_keys_for_eval: Optional[List[str]] = None,
             **kwargs,
     ):
+        for param in self.model.parameters():
+            param.requires_grad = True
         from betty.configs import EngineConfig, Config
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(

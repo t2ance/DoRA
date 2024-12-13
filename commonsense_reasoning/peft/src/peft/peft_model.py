@@ -37,8 +37,7 @@ from transformers import PreTrainedModel
 from transformers.modeling_outputs import SequenceClassifierOutput, TokenClassifierOutput
 from transformers.utils import PushToHubMixin
 
-from .tuners import LoraModel, BottleneckModel, PrefixEncoder, PromptEmbedding, PromptEncoder, DoraModel
-from .tuners.dora import BiDoraModel
+from .tuners import LoraModel, BottleneckModel, PrefixEncoder, PromptEmbedding, PromptEncoder, DoraModel, BiDoraModel
 from .utils import (
     TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING,
     WEIGHTS_NAME,

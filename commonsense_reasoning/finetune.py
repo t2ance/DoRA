@@ -438,6 +438,7 @@ class BiDoRAProblem(ImplicitProblem):
             self.train_data_iterator[idx] = iter(train_data_loader)
             batch = next(self.train_data_iterator[idx])
         print('In get_batch_single_loader', batch)
+        print(type(batch))
         if not isinstance(batch, dict):
             print('batch is not dict')
             batch = tuple(convert_tensor(value, self.device) for value in batch)

@@ -33,16 +33,12 @@ spec:
               name: peijia-volume3
           resources:
             requests:
-              #          nvidia.com/gpu: "1"
-              #          nvidia.com/rtxa6000: "1"
               nvidia.com/a100: "1"
-              memory: "6G"
+              memory: "12G"
               cpu: "2"
             limits:
-              #          nvidia.com/gpu: "1"
-              #          nvidia.com/rtxa6000: "1"
               nvidia.com/a100: "1"
-              memory: "6G"
+              memory: "12G"
               cpu: "2"
       #  affinity:
       #    nodeAffinity:

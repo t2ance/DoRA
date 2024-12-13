@@ -418,6 +418,7 @@ import wandb
 
 class Inner(ImplicitProblem):
     def training_step(self, batch):
+        print(batch)
         batch = {key: value.to(self.device) for key, value in batch.items()}
         loss = self.module(**batch, return_dict=True).loss
         wandb.log({

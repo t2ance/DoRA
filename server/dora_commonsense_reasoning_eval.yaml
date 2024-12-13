@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: bidora-commonsense-reasoning
+  name: dora-commonsense-reasoning-eval
 spec:
   backoffLimit: 2
   template:
@@ -25,7 +25,7 @@ spec:
              echo 'installed!';
              bash ./download_data.sh;
              echo 'downloaded!';
-             sh llama_7B_BiDora.sh 32 64 ./finetuned_result/bidora_r32 0;
+             sh llama_7B_Dora_eval.sh /data/dora/finetuned_result/dora_r32 0;
              "
           ]
           #             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;

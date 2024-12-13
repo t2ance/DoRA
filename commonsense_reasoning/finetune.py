@@ -591,8 +591,8 @@ class BiDoRATrainer(transformers.Trainer):
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(
             self.args.max_steps, inner_optimizer, outer_optimizer)
-        # precision = 'fp16'
-        precision = 'fp32'
+        precision = 'fp16'
+        # precision = 'fp32'
         inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision=precision)
         outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision=precision)
         engine_config = EngineConfig(

@@ -501,11 +501,11 @@ class BiDoRATrainer(transformers.Trainer):
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 if 'weight_m_wdecomp' in name:
-                    print(f'{name} is trainable at lower level')
-                    inner_params_list.append(param)
-                else:
                     outer_params_list.append(param)
                     print(f'{name} is trainable at upper level')
+                else:
+                    inner_params_list.append(param)
+                    print(f'{name} is trainable at lower level')
             else:
                 print(f'{name} is not trainable')
 
@@ -551,15 +551,19 @@ class BiDoRATrainer(transformers.Trainer):
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(
             self.args.max_steps, inner_optimizer, outer_optimizer)
-        outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision='fp16')
         inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision='fp16')
+        outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision='fp16')
         engine_config = EngineConfig(
             train_iters=self.args.max_steps, valid_step=self.args.eval_steps)
-        outer = Outer(name="outer", module=self.model, optimizer=outer_optimizer, scheduler=outer_scheduler,
-                      config=outer_config,
-                      train_data_loader=self.get_train_dataloader(dataset=self.outer_train_dataset))
+        inner_dataloader = self.get_train_dataloader(dataset=self.train_dataset)
+        outer_dataloader = self.get_train_dataloader(dataset=self.outer_train_dataset)
+        sample_batch = iter(inner_dataloader)
+        print('Sample batch from inner loader')
+        print(sample_batch)
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,
-                      config=inner_config, train_data_loader=self.get_train_dataloader(dataset=self.train_dataset))
+                      config=inner_config, train_data_loader=inner_dataloader)
+        outer = Outer(name="outer", module=self.model, optimizer=outer_optimizer, scheduler=outer_scheduler,
+                      config=outer_config, train_data_loader=outer_dataloader)
         problems = [outer, inner]
         l2u = {inner: [outer]}
         u2l = {outer: [inner]}

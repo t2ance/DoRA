@@ -5,7 +5,7 @@
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
-
+import dataclasses
 import os
 import sys
 from dataclasses import field
@@ -34,6 +34,7 @@ from peft import (  # noqa: E402
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer  # noqa: F402
 
 
+@dataclasses.dataclass
 class PEFTTrainingArguments(transformers.TrainingArguments):
     outer_learning_rate: float = field(default=5e-5, metadata={"help": "The initial learning rate for AdamW."})
     outer_weight_decay: float = field(default=0.0, metadata={"help": "Weight decay for AdamW if we apply some."})
@@ -519,7 +520,7 @@ class BiDoRATrainer(transformers.Trainer):
 
         outer_optimizer = AdamW([{
             "params": outer_params_list, "weight_decay": self.args.outer_weight_decay,
-        }],**{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
+        }], **{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
 
         return inner_optimizer, outer_optimizer
 

@@ -28,24 +28,6 @@ spec:
              jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
              "
           ]
-          #             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
-#          Map: 100%|鈻堚枅鈻堚枅鈻堚枅鈻堚枅鈻堚枅| 120/120 [00:00<00:00, 1334.24 examples/s]
-          #Training dataset size: 170300
-          #Validation dataset size: 120
-          #Inner training dataset size: 136240
-          #Outer training dataset size: 34060
-          #Traceback (most recent call last):
-          #  File "/DoRA/commonsense_reasoning/finetune.py", line 599, in <module>
-          #    fire.Fire(train)
-          #  File "/opt/conda/envs/dora_llama/lib/python3.10/site-packages/fire/core.py", line 141, in Fire
-          #    component_trace = _Fire(component, args, parsed_flag_args, context, name)
-          #  File "/opt/conda/envs/dora_llama/lib/python3.10/site-packages/fire/core.py", line 475, in _Fire
-          #    component, remaining_args = _CallAndUpdateTrace(
-          #  File "/opt/conda/envs/dora_llama/lib/python3.10/site-packages/fire/core.py", line 691, in _CallAndUpdateTrace
-          #    component = fn(*varargs, **kwargs)
-          #  File "/DoRA/commonsense_reasoning/finetune.py", line 328, in train
-          #    args=PEFTTrainingArguments(
-          #TypeError: TrainingArguments.__init__() got an unexpected keyword argument 'outer_learning_rate'
           volumeMounts:
             - mountPath: /data
               name: peijia-volume3
@@ -54,13 +36,13 @@ spec:
               #          nvidia.com/gpu: "1"
               #          nvidia.com/rtxa6000: "1"
               nvidia.com/a100: "1"
-              memory: "12G"
+              memory: "6G"
               cpu: "2"
             limits:
               #          nvidia.com/gpu: "1"
               #          nvidia.com/rtxa6000: "1"
               nvidia.com/a100: "1"
-              memory: "12G"
+              memory: "6G"
               cpu: "2"
       #  affinity:
       #    nodeAffinity:

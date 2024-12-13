@@ -36,13 +36,13 @@ spec:
               #          nvidia.com/gpu: "1"
               #          nvidia.com/rtxa6000: "1"
               nvidia.com/a100: "1"
-              memory: "12G"
+              memory: "6G"
               cpu: "2"
             limits:
               #          nvidia.com/gpu: "1"
               #          nvidia.com/rtxa6000: "1"
               nvidia.com/a100: "1"
-              memory: "12G"
+              memory: "6G"
               cpu: "2"
       #  affinity:
       #    nodeAffinity:

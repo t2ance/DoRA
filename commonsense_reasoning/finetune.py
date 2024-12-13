@@ -560,7 +560,7 @@ class BiDoRATrainer(transformers.Trainer):
         inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision='fp16')
         engine_config = EngineConfig(
             train_iters=self.args.max_steps, valid_step=self.args.eval_steps)
-        outer = Outer(name="outer", module=None, optimizer=outer_optimizer, scheduler=outer_scheduler,
+        outer = Outer(name="outer", module=self.model, optimizer=outer_optimizer, scheduler=outer_scheduler,
                       config=outer_config,
                       train_data_loader=self.get_train_dataloader(dataset=self.outer_train_dataset))
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,

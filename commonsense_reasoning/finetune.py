@@ -331,6 +331,8 @@ def train(
                 gradient_accumulation_steps=gradient_accumulation_steps,
                 warmup_steps=100,
                 num_train_epochs=num_epochs,
+                max_steps=20000,
+                eval_steps=200,
                 learning_rate=learning_rate,
                 weight_decay=weight_decay,
                 outer_learning_rate=outer_learning_rate,

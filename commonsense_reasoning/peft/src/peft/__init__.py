@@ -40,6 +40,8 @@ from .tuners import (
     LoraModel,
     DoraConfig,
     DoraModel,
+    BiDoraConfig,
+    BiDoraModel,
     BottleneckConfig,
     BottleneckModel,
     PrefixEncoder,

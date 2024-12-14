@@ -408,6 +408,10 @@ class Linear(nn.Linear, LoraLayer):
             self.lora_B.eval()
         self.weight_m_wdecomp.eval()
 
+    def direction(self):
+        incremental = self.lora_B.weight @ self.lora_A.weight
+        return
+
     def forward(self, x: torch.Tensor, alphas: torch.Tensor = None):
         assert alphas is not None, 'alphas cannot be None in BiDoRA module'
         previous_dtype = self.weight.dtype

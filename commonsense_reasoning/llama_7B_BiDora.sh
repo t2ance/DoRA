@@ -20,7 +20,7 @@ CUDA_VISIBLE_DEVICES=$4 python finetune.py \
   --val_set_size 120 \
   --eval_step 80 \
   --save_step 80 \
-  --adapter_name dora \
+  --adapter_name bidora \
   --target_modules '["q_proj", "k_proj", "v_proj", "up_proj", "down_proj"]' \
   --lora_r $1 \
   --lora_alpha $2 \

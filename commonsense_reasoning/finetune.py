@@ -25,6 +25,7 @@ sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from peft import (  # noqa: E402
     LoraConfig,
     DoraConfig,
+    BiDoraConfig,
     BottleneckConfig,
     PrefixTuningConfig,
     get_peft_model,
@@ -236,6 +237,18 @@ def train(
     elif adapter_name == "dora":
         print("DoRA init")
         config = DoraConfig(
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            target_modules=target_modules,
+            lora_dropout=lora_dropout,
+            bias="none",
+            task_type="CAUSAL_LM",
+            dora_simple=dora_simple,
+            Wdecompose_target_modules=Wdecompose_target_modules
+        )
+    elif adapter_name == "bidora":
+        print("BiDoRA init")
+        config = BiDoraConfig(
             r=lora_r,
             lora_alpha=lora_alpha,
             target_modules=target_modules,
@@ -579,16 +592,17 @@ class BiDoRATrainer(transformers.Trainer):
         inner_params_list = []
         outer_params_list = []
         for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                if 'weight_m_wdecomp' in name:
-                    outer_params_list.append(param)
-                    print(f'{name} is trainable at upper level')
-                else:
-                    inner_params_list.append(param)
-                    print(f'{name} is trainable at lower level')
+
+            if 'weight_m_wdecomp' in name:
+                outer_params_list.append(param)
+                print(f'{name} is trainable at upper level')
+            elif 'lora_' in name:
+                inner_params_list.append(param)
+                print(f'{name} is trainable at lower level')
             else:
                 print(f'{name} is not trainable')
 
+        print("Using alphas' parameters")
         outer_params_list = list(self.alphas.parameters())
 
         inner_parameter_groups = [{
@@ -662,34 +676,28 @@ class BiDoRATrainer(transformers.Trainer):
         engine.run()
 
 
-def compute_magnitude_regularization(alphas, regu_weight=0.1):
-    '''
-    Regularize on the direction matrix, try to make the directions orthogonoal to each other
-    '''
+def compute_magnitude_regularization(alphas):
     regu_loss, num_param = 0., 0
     for alpha in alphas:
         for m in alpha:
             regu_loss += m.abs().sum()
             num_param += 1
 
-    return regu_weight * regu_loss / num_param
+    return regu_loss / num_param
 
 
-def compute_direction_regularization(model, regu_weight=0.1):
-    '''
-    Regularize on the direction matrix, try to make the directions orthogonoal to each other
-    '''
+def compute_direction_regularization(model):
     regu_loss, num_param = 0., 0
     for module_name, module in model.named_modules():
         if is_bidora_layer(module):
-            D = module.v_ft()
+            D = module.weight()
             D_ = D.T @ D
             I = torch.eye(len(D_), device=D_.device)
             regu_loss += torch.norm(D_ - I, p="fro")
             # regu_loss += torch.linalg.matrix_norm(D_ - I, ord=2)
             num_param += 1
 
-    return regu_weight * regu_loss / num_param
+    return regu_loss / num_param
 
 
 def generate_prompt(data_point):

@@ -539,6 +539,10 @@ class BiDoRATrainer(transformers.Trainer):
         self.args: PEFTTrainingArguments = kwargs['args']
         self.outer_train_dataset = outer_train_dataset
         self.alphas = BiDoRAArchitecture(self.model)
+        print('BiDoRA architecture alphas')
+        print(self.alphas)
+        print("alphas' parameter list")
+        print(list(self.alphas.parameters()))
         wandb.init(project='dora', name='bidora commonsense reasoning', config=asdict(self.args))
 
     def get_train_dataloader(self, dataset=None) -> DataLoader:

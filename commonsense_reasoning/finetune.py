@@ -318,6 +318,7 @@ def train(
     print(f'Training dataset size: {len(train_data)}')
     print(f'Validation dataset size: {len(val_data)}')
     print('PEFT model', model.__class__.__name__)
+    print('PEFT model', model.base_model.__class__.__name__)
     if bilevel:
         train_split = train_data.train_test_split(test_size=0.2)
         inner_train_data, outer_train_data = train_split['train'], train_split['test']
@@ -524,6 +525,7 @@ class BiDoRATrainer(transformers.Trainer):
         super().__init__(**kwargs)
         self.args: PEFTTrainingArguments = kwargs['args']
         self.outer_train_dataset = outer_train_dataset
+        self.alphas = BiDoRAArchitecture(self.model)
         wandb.init(project='dora', name='bidora commonsense reasoning', config=asdict(self.args))
 
     def get_train_dataloader(self, dataset=None) -> DataLoader:
@@ -553,6 +555,13 @@ class BiDoRATrainer(transformers.Trainer):
         # return self.accelerator.prepare(DataLoader(dataset, **dataloader_params))
         return DataLoader(dataset, **dataloader_params)
 
+    def count_optimized_parameters(self, param_groups):
+        total_params = 0
+        for param_group in param_groups:
+            for param in param_group['params']:
+                total_params += param.numel()
+        return total_params
+
     def create_optimizer(self):
         """
         Setup the optimizer.
@@ -580,14 +589,19 @@ class BiDoRATrainer(transformers.Trainer):
             else:
                 print(f'{name} is not trainable')
 
-        inner_optimizer = AdamW([{
+        outer_params_list = list(self.alphas.parameters())
+
+        inner_parameter_groups = [{
             "params": inner_params_list, "weight_decay": self.args.weight_decay,
-        }], **{**optimizer_kwargs, "lr": self.args.learning_rate})
-
-        outer_optimizer = AdamW([{
+        }]
+        outer_parameter_groups = [{
             "params": outer_params_list, "weight_decay": self.args.outer_weight_decay,
-        }], **{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
+        }]
 
+        inner_optimizer = AdamW(inner_parameter_groups, **{**optimizer_kwargs, "lr": self.args.learning_rate})
+        outer_optimizer = AdamW(outer_parameter_groups, **{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
+        print('#Inner params', self.count_optimized_parameters(inner_parameter_groups))
+        print('#Outer params', self.count_optimized_parameters(outer_parameter_groups))
         return inner_optimizer, outer_optimizer
 
     def create_scheduler(self, num_training_steps: int, inner_optimizer: torch.optim.Optimizer = None,
@@ -636,10 +650,9 @@ class BiDoRATrainer(transformers.Trainer):
         print('Sample batch from inner loader')
         print(sample_batch.keys())
         print(sample_batch)
-        alphas = BiDoRAArchitecture(self.model)
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,
                       config=inner_config, train_data_loader=inner_dataloader)
-        outer = Outer(name="outer", module=alphas, optimizer=outer_optimizer, scheduler=outer_scheduler,
+        outer = Outer(name="outer", module=self.alphas, optimizer=outer_optimizer, scheduler=outer_scheduler,
                       config=outer_config, train_data_loader=outer_dataloader)
         problems = [outer, inner]
         l2u = {inner: [outer]}

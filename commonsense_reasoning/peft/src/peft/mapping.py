@@ -219,6 +219,8 @@ def get_peft_model(model, peft_config):
         elif peft_config.peft_type == "BOTTLENECK":
             peft_config = _prepare_bottleneck_config(peft_config, model_config)
             return PeftModel(model, peft_config)
+        else:
+            raise NotImplementedError(f'Unknown task type: {peft_config.task_type}.')
     if not isinstance(peft_config, PromptLearningConfig):
         if peft_config.peft_type == "BOTTLENECK":
             peft_config = _prepare_bottleneck_config(peft_config, model_config)
@@ -226,6 +228,8 @@ def get_peft_model(model, peft_config):
             peft_config = _prepare_lora_config(peft_config, model_config)
         elif peft_config.peft_type == "DORA":
             peft_config = _prepare_dora_config(peft_config, model_config)
+        else:
+            raise NotImplementedError(f'Unknown task type: {peft_config.task_type}.')
     else:
         peft_config = _prepare_prompt_learning_config(peft_config, model_config)
     return MODEL_TYPE_TO_PEFT_MODEL_MAPPING[peft_config.task_type](model, peft_config)

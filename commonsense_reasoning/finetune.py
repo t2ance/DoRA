@@ -152,7 +152,7 @@ def train(
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             load_in_8bit=load_8bit,
-            # torch_dtype=torch.float16,
+            torch_dtype=torch.float16,
             device_map=device_map,
             trust_remote_code=True,
         )
@@ -160,7 +160,7 @@ def train(
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             load_in_8bit=False,
-            # torch_dtype=torch.float16,
+            torch_dtype=torch.float16,
             device_map={"": int(os.environ.get("LOCAL_RANK") or 0)},
             trust_remote_code=True,
         )
@@ -317,6 +317,7 @@ def train(
 
     print(f'Training dataset size: {len(train_data)}')
     print(f'Validation dataset size: {len(val_data)}')
+    print('PEFT model', model.__class__.__name__)
     if bilevel:
         train_split = train_data.train_test_split(test_size=0.2)
         inner_train_data, outer_train_data = train_split['train'], train_split['test']
@@ -487,6 +488,10 @@ class BilevelEngine(Engine):
 from dataclasses import asdict
 
 
+def is_bidora_layer(module):
+    return 'bidora' in module.__class__.__name__
+
+
 class BiDoRAArchitecture(torch.nn.Module):
 
     def __init__(self, model):
@@ -494,7 +499,7 @@ class BiDoRAArchitecture(torch.nn.Module):
         magnitudes_query = []
         magnitudes_value = []
         for module_name, module in model.named_modules():
-            if 'bidora' in module.__class__.__name__:
+            if is_bidora_layer(module):
                 magnitude = module.weight.norm(p=2, dim=0, keepdim=False)
                 print(f'Initialize from module {module_name}')
                 if 'query' in module_name or 'q_proj' in module_name:
@@ -643,6 +648,7 @@ class BiDoRATrainer(transformers.Trainer):
         engine = BilevelEngine(config=engine_config, problems=problems, dependencies=dependencies)
         engine.run()
 
+
 def compute_magnitude_regularization(alphas, regu_weight=0.1):
     '''
     Regularize on the direction matrix, try to make the directions orthogonoal to each other
@@ -655,13 +661,14 @@ def compute_magnitude_regularization(alphas, regu_weight=0.1):
 
     return regu_weight * regu_loss / num_param
 
+
 def compute_direction_regularization(model, regu_weight=0.1):
     '''
     Regularize on the direction matrix, try to make the directions orthogonoal to each other
     '''
     regu_loss, num_param = 0., 0
     for module_name, module in model.named_modules():
-        if isinstance(module, BiDoRALinear):
+        if is_bidora_layer(module):
             D = module.v_ft()
             D_ = D.T @ D
             I = torch.eye(len(D_), device=D_.device)

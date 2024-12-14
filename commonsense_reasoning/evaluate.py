@@ -1,18 +1,17 @@
+import argparse
 import copy
 import json
 import os
 import re
 import sys
-import argparse
 
 import fire
-
 import torch
 
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from peft import PeftModel
 from tqdm import tqdm
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
+from transformers import GenerationConfig, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
 
 if torch.cuda.is_available():
     device = "cuda"

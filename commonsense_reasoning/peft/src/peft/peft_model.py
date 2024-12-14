@@ -78,6 +78,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def __init__(self, model, peft_config: PeftConfig):
         super().__init__()
+        print(f'Initialing PeftModel class with peft_config {peft_config}')
         self.peft_config = peft_config
         self.base_model = model
         self.config = self.base_model.config

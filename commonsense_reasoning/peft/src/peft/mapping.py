@@ -206,7 +206,7 @@ def get_peft_model(model, peft_config):
         model ([`transformers.PreTrainedModel`]): Model to be wrapped.
         peft_config ([`PeftConfig`]): Configuration object containing the parameters of the Peft model.
     """
-
+    print(f'get peft model with peft config {peft_config}')
     model_config = model.config.to_dict()
     peft_config.base_model_name_or_path = model.__dict__.get("name_or_path", None)
     if peft_config.task_type not in MODEL_TYPE_TO_PEFT_MODEL_MAPPING.keys():

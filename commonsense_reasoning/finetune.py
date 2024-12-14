@@ -331,7 +331,7 @@ def train(
     print(f'Training dataset size: {len(train_data)}')
     print(f'Validation dataset size: {len(val_data)}')
     print('PEFT model', model.__class__.__name__)
-    print('PEFT model', model.base_model.__class__.__name__)
+    print('PEFT base model', model.base_model.__class__.__name__)
     if bilevel:
         train_split = train_data.train_test_split(test_size=0.2)
         inner_train_data, outer_train_data = train_split['train'], train_split['test']

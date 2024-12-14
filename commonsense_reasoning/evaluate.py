@@ -93,7 +93,7 @@ def main(
     miss = 0.001
     output_data = []
     pbar = tqdm(total=total)
-    print(f'Evaluating {dataset} dataset')
+    print(f'Evaluating {dataset} dataset (size={total})')
     for idx, data in enumerate(dataset):
         instruction = data.get('instruction')
 

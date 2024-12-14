@@ -129,6 +129,7 @@ class BiDoraModel(torch.nn.Module):
     """
 
     def __init__(self, config, model):
+        print('Initialing BiDoRA model')
         super().__init__()
         self.peft_config = config
         self.model = model

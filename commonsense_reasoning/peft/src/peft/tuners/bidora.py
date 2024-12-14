@@ -352,13 +352,13 @@ class Linear(nn.Linear, LoraLayer):
         nn.Linear.__init__(self, in_features, out_features, **kwargs)
         LoraLayer.__init__(self, r=r, lora_alpha=lora_alpha, lora_dropout=lora_dropout, merge_weights=merge_weights)
 
-        self.weight_m_wdecomp = nn.Linear(1, out_features,
-                                          bias=False)  # self.weight_m_wdecomp.weight # shape: out_features, 1
+        # self.weight_m_wdecomp = nn.Linear(1, out_features,
+        #                                   bias=False)  # self.weight_m_wdecomp.weight # shape: out_features, 1
 
         self.fan_in_fan_out = fan_in_fan_out
-        self.Wdecompose = Wdecompose  # whether to tune only the magnitude component of Wdecompose or not
+        self.Wdecompose = False  # whether to tune only the magnitude component of Wdecompose or not
         self.dora_simple = dora_simple  # whether to use dora simple to save up GPU memory
-        if self.Wdecompose == False:
+        if not self.Wdecompose:
             if r > 0:
                 self.lora_A = nn.Linear(in_features, r, bias=False)
                 self.lora_B = nn.Linear(r, out_features, bias=False)
@@ -382,7 +382,7 @@ class Linear(nn.Linear, LoraLayer):
         if self.Wdecompose == False:
             self.lora_A.train(mode)
             self.lora_B.train(mode)
-        self.weight_m_wdecomp.train(mode)
+        # self.weight_m_wdecomp.train(mode)
 
         if not mode and self.merge_weights and not self.merged:
             # Merge the weights and mark it
@@ -408,15 +408,18 @@ class Linear(nn.Linear, LoraLayer):
             self.lora_B.eval()
         self.weight_m_wdecomp.eval()
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor, alphas: torch.Tensor = None):
+        assert alphas is not None, 'alphas cannot be None in BiDoRA module'
         previous_dtype = self.weight.dtype
 
+        # magnitude = self.weight_m_wdecomp.weight
+        magnitude = alphas
         if self.disable_adapters:
             raise NotImplementedError
 
-        elif self.Wdecompose and not self.merged:
-
-            norm_scale = self.weight_m_wdecomp.weight.view(-1) / (torch.linalg.norm(self.weight, dim=1))
+        elif not self.merged:
+            print('bidora forward')
+            norm_scale = magnitude.view(-1) / (torch.linalg.norm(self.weight, dim=1))
 
             org_result = (F.linear(x, transpose(self.weight, self.fan_in_fan_out)))
 
@@ -431,9 +434,9 @@ class Linear(nn.Linear, LoraLayer):
             new_weight_v = self.weight + (self.lora_B.weight @ self.lora_A.weight) * self.scaling
 
             if self.dora_simple:
-                norm_scale = self.weight_m_wdecomp.weight.view(-1) / (torch.linalg.norm(new_weight_v, dim=1)).detach()
+                norm_scale = magnitude.view(-1) / (torch.linalg.norm(new_weight_v, dim=1)).detach()
             else:
-                norm_scale = self.weight_m_wdecomp.weight.view(-1) / (torch.linalg.norm(new_weight_v, dim=1))
+                norm_scale = magnitude.view(-1) / (torch.linalg.norm(new_weight_v, dim=1))
 
             org_result = (F.linear(x, transpose(self.weight, self.fan_in_fan_out)))
 
@@ -510,7 +513,7 @@ def replace_for_bidora():
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class='LlamaConfig')
     def llama_for_causal_lm_forward_for_bidora(
             self,
-            alphas,
+            alphas=None,
             input_ids: torch.LongTensor = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
@@ -605,7 +608,7 @@ def replace_for_bidora():
     @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
     def llama_model_forward_for_bidora(
             self,
-            alphas,
+            alphas=None,
             input_ids: torch.LongTensor = None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
@@ -678,7 +681,7 @@ def replace_for_bidora():
             if self.gradient_checkpointing and self.training:
                 layer_outputs = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
-                    alphas,
+                    alphas[i] if alphas is not None else alphas,
                     hidden_states,
                     causal_mask,
                     position_ids,
@@ -690,7 +693,7 @@ def replace_for_bidora():
                 )
             else:
                 layer_outputs = decoder_layer(
-                    alphas,
+                    alphas[i] if alphas is not None else alphas,
                     hidden_states,
                     attention_mask=causal_mask,
                     position_ids=position_ids,
@@ -730,8 +733,8 @@ def replace_for_bidora():
 
     def llama_decoder_layer_forward_for_bidora(
             self,
-            alphas,
             hidden_states: torch.Tensor,
+            alphas=None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
             past_key_value: Optional[Cache] = None,
@@ -801,8 +804,8 @@ def replace_for_bidora():
     # Adapted from LlamaAttention.forward
     def llama_sdpa_attention_forward_for_bidora(
             self,
-            alphas,
             hidden_states: torch.Tensor,
+            alphas=None,
             attention_mask: Optional[torch.Tensor] = None,
             position_ids: Optional[torch.LongTensor] = None,
             past_key_value: Optional[Cache] = None,

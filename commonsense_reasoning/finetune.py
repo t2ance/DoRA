@@ -357,7 +357,7 @@ def train(
                 self, old_state_dict()
             )
         ).__get__(model, type(model))
-
+        model.save_pretrained(output_dir)
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     else:
         trainer = transformers.Trainer(
@@ -404,7 +404,7 @@ def train(
 
         # trainer.push_to_hub()
         print(f'Saving to {output_dir}')
-        model.save_pretrained(output_dir)
+        # model.save_pretrained(output_dir)
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
         model.save_pretrained(output_dir)
 
@@ -485,6 +485,32 @@ class BilevelEngine(Engine):
 
 
 from dataclasses import asdict
+
+
+class BiDoRAArchitecture(torch.nn.Module):
+
+    def __init__(self, model):
+        super(BiDoRAArchitecture, self).__init__()
+        magnitudes_query = []
+        magnitudes_value = []
+        for module_name, module in model.named_modules():
+            if 'bidora' in module.__class__.__name__:
+                magnitude = module.weight.norm(p=2, dim=0, keepdim=False)
+                print(f'Initialize from module {module_name}')
+                if 'query' in module_name or 'q_proj' in module_name:
+                    magnitudes_query.append(magnitude)
+                elif 'value' in module_name or 'v_proj' in module_name:
+                    magnitudes_value.append(magnitude)
+                else:
+                    raise NotImplementedError(f'Unknown BiDoRA module: {module_name}')
+        assert len(magnitudes_query) == len(magnitudes_value)
+        self.alpha = nn.ModuleList()
+        for i, (query, value) in enumerate(zip(magnitudes_query, magnitudes_value)):
+            q_v_pair = nn.ParameterList([nn.Parameter(query), nn.Parameter(value)])
+            self.alpha.append(q_v_pair)
+
+    def forward(self):
+        return self.alpha
 
 
 class BiDoRATrainer(transformers.Trainer):
@@ -605,9 +631,10 @@ class BiDoRATrainer(transformers.Trainer):
         print('Sample batch from inner loader')
         print(sample_batch.keys())
         print(sample_batch)
+        alphas = BiDoRAArchitecture(self.model)
         inner = Inner(name="inner", module=self.model, optimizer=inner_optimizer, scheduler=inner_scheduler,
                       config=inner_config, train_data_loader=inner_dataloader)
-        outer = Outer(name="outer", module=self.model, optimizer=outer_optimizer, scheduler=outer_scheduler,
+        outer = Outer(name="outer", module=alphas, optimizer=outer_optimizer, scheduler=outer_scheduler,
                       config=outer_config, train_data_loader=outer_dataloader)
         problems = [outer, inner]
         l2u = {inner: [outer]}
@@ -615,6 +642,34 @@ class BiDoRATrainer(transformers.Trainer):
         dependencies = {"l2u": l2u, "u2l": u2l}
         engine = BilevelEngine(config=engine_config, problems=problems, dependencies=dependencies)
         engine.run()
+
+def compute_magnitude_regularization(alphas, regu_weight=0.1):
+    '''
+    Regularize on the direction matrix, try to make the directions orthogonoal to each other
+    '''
+    regu_loss, num_param = 0., 0
+    for alpha in alphas:
+        for m in alpha:
+            regu_loss += m.abs().sum()
+            num_param += 1
+
+    return regu_weight * regu_loss / num_param
+
+def compute_direction_regularization(model, regu_weight=0.1):
+    '''
+    Regularize on the direction matrix, try to make the directions orthogonoal to each other
+    '''
+    regu_loss, num_param = 0., 0
+    for module_name, module in model.named_modules():
+        if isinstance(module, BiDoRALinear):
+            D = module.v_ft()
+            D_ = D.T @ D
+            I = torch.eye(len(D_), device=D_.device)
+            regu_loss += torch.norm(D_ - I, p="fro")
+            # regu_loss += torch.linalg.matrix_norm(D_ - I, ord=2)
+            num_param += 1
+
+    return regu_weight * regu_loss / num_param
 
 
 def generate_prompt(data_point):

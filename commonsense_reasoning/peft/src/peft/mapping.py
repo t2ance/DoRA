@@ -228,6 +228,8 @@ def get_peft_model(model, peft_config):
             peft_config = _prepare_lora_config(peft_config, model_config)
         elif peft_config.peft_type == "DORA":
             peft_config = _prepare_dora_config(peft_config, model_config)
+        elif peft_config.peft_type == "BIDORA":
+            peft_config = _prepare_dora_config(peft_config, model_config)
         else:
             raise NotImplementedError(f'Unknown task type: {peft_config.task_type}.')
     else:

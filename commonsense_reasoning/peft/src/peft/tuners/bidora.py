@@ -101,7 +101,7 @@ class BiDoraConfig(PeftConfig):
     )
 
     def __post_init__(self):
-        self.peft_type = PeftType.DORA
+        self.peft_type = PeftType.BIDORA
 
 
 class BiDoraModel(torch.nn.Module):

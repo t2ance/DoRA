@@ -503,6 +503,8 @@ from dataclasses import asdict
 
 
 def is_bidora_layer(module):
+    print('Checking bidora layer...')
+    print(f'Module name {module.__class__.__name__}')
     return 'bidora' in module.__class__.__name__
 
 

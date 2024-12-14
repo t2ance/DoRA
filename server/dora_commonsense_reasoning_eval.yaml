@@ -26,9 +26,9 @@ spec:
              bash ./download_data.sh;
              echo 'downloaded!';
              sh llama_7B_Dora_eval.sh /data/dora/finetuned_result/dora_r32 0;
+             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
              "
           ]
-          #             jupyter lab --ip=0.0.0.0 --port=8888 --NotebookApp.token=627a7b3b --no-browser --allow-root;
           volumeMounts:
             - mountPath: /data
               name: peijia-volume3

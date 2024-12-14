@@ -15,7 +15,7 @@ import sys
 import torch
 
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
-from peft import PeftModel
+from peft import PeftModel, get_peft_model
 from tqdm import tqdm
 from transformers import GenerationConfig, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
 
@@ -259,6 +259,9 @@ def load_model(args) -> tuple:
             device_map="auto",
             trust_remote_code=True,
         )  # fix zwq
+
+        # model = get_peft_model(model, config)
+
         model = PeftModel.from_pretrained(
             model,
             lora_weights,

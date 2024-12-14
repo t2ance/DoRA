@@ -93,6 +93,7 @@ def main(
     miss = 0.001
     output_data = []
     pbar = tqdm(total=total)
+    print(f'Evaluating {dataset} dataset')
     for idx, data in enumerate(dataset):
         instruction = data.get('instruction')
 
@@ -116,13 +117,14 @@ def main(
         new_data['pred'] = predict
         new_data['flag'] = flag
         output_data.append(new_data)
-        print(' ')
-        print('---------------')
-        print(outputs)
-        print('prediction:', predict)
-        print('label:', label)
-        print('---------------')
-        print(f'\rtest:{idx + 1}/{total} | accuracy {correct}  {correct / (idx + 1)}')
+        if idx % 100 == 0:
+            print(' ')
+            print('---------------')
+            print(outputs)
+            print('prediction:', predict)
+            print('label:', label)
+            print('---------------')
+            print(f'\rtest:{idx + 1}/{total} | accuracy {correct}  {correct / (idx + 1)}')
         with open(save_file, 'w+') as f:
             json.dump(output_data, f, indent=4)
         pbar.update(1)

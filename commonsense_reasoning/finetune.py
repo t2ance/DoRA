@@ -507,10 +507,16 @@ from peft.tuners.bidora import LoraLayer
 
 
 def is_bidora_layer(module):
-    print('Checking bidora layer...')
-    print(f'Module name {module.__class__.__name__}')
+    # print('Checking bidora layer...')
+    # print(f'Module name {module.__class__.__name__}')
     # return 'bidora' in module.__class__.__name__
     return isinstance(module, LoraLayer)
+
+
+class DoRAMagnitude(nn.Module):
+    def __init__(self, magnitude):
+        super(DoRAMagnitude, self).__init__()
+        self.magnitude = nn.Parameter(magnitude.clone(), requires_grad=False)
 
 
 class BiDoRAArchitecture(torch.nn.Module):
@@ -539,7 +545,7 @@ class BiDoRAArchitecture(torch.nn.Module):
         for i in range(num_layers):
             layer_dict = nn.ModuleDict()
             for module in target_modules:
-                layer_dict[module] = nn.Parameter(magnitude_lists[module][i].clone(), requires_grad=False)
+                layer_dict[module] = DoRAMagnitude(magnitude_lists[module][i])
             self.magnitudes.append(layer_dict)
 
         print(f'BiDoRAArchitecture initialized with {num_layers} layers.')

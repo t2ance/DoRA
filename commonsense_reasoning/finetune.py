@@ -374,8 +374,8 @@ def train(
                 self, old_state_dict()
             )
         ).__get__(model, type(model))
-        model.save_pretrained(output_dir)
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+        model.save_pretrained(output_dir)
     else:
         trainer = transformers.Trainer(
             model=model,
@@ -563,8 +563,8 @@ class BiDoRATrainer(transformers.Trainer):
         self.alphas = BiDoRAArchitecture(self.model, self.args.target_modules)
         print('BiDoRA architecture alphas')
         print(self.alphas)
-        print("alphas' parameter list")
-        print(list(self.alphas.parameters()))
+        print("alphas' parameter list size")
+        print(len(list(self.alphas.parameters())))
         wandb.init(project='dora', name='bidora commonsense reasoning', config=asdict(self.args))
 
     def get_train_dataloader(self, dataset=None) -> DataLoader:

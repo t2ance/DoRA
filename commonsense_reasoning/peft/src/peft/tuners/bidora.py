@@ -419,6 +419,7 @@ class Linear(nn.Linear, LoraLayer):
 
     def forward(self, x: torch.Tensor, alphas: torch.Tensor = None):
         assert alphas is not None, 'alphas cannot be None in BiDoRA module'
+        print(f'BiDoRA forward alphas {alphas}')
         previous_dtype = self.weight.dtype
 
         # magnitude = self.weight_m_wdecomp.weight

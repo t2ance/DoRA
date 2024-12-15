@@ -11,8 +11,8 @@ CUDA_VISIBLE_DEVICES=$4 python finetune.py \
   --base_model 'yahma/llama-7b-hf' \
   --data_path 'commonsense_170k.json' \
   --output_dir $3 \
-  --batch_size 2 \
-  --micro_batch_size 2 \
+  --batch_size 1 \
+  --micro_batch_size 1 \
   --num_epochs 3 \
   --learning_rate 2e-4 \
   --outer_learning_rate 2e-4 \

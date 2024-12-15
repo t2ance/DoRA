@@ -519,6 +519,7 @@ from transformers.models.llama.modeling_llama import *
 
 
 def replace_for_bidora():
+    print('Replacing Llama modules for BiDoRA')
     @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class='LlamaConfig')
     def llama_for_causal_lm_forward_for_bidora(

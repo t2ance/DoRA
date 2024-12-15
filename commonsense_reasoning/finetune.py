@@ -472,7 +472,7 @@ class Inner(BiDoRAProblem):
     def training_step(self, batch):
         print(batch)
         batch = {key: value.to(self.device) for key, value in batch.items()}
-        loss = self.module(**batch, return_dict=True).loss
+        loss = self.module(**batch, return_dict=True, alphas=self.outer()).loss
         wandb.log({
             "Inner/batch loss": loss.cpu().item(),
             "Inner/loss": loss.cpu().item(),
@@ -484,7 +484,7 @@ class Inner(BiDoRAProblem):
 class Outer(BiDoRAProblem):
     def training_step(self, batch):
         batch = {key: value.to(self.device) for key, value in batch.items()}
-        loss = self.inner.module(**batch, return_dict=True).loss
+        loss = self.inner.module(**batch, return_dict=True, alphas=self.forward()).loss
         wandb.log({
             "Inner/batch loss": loss.cpu().item(),
             "Inner/loss": loss.cpu().item(),
@@ -671,14 +671,16 @@ class BiDoRATrainer(transformers.Trainer):
             ignore_keys_for_eval: Optional[List[str]] = None,
             **kwargs,
     ):
+        from peft.tuners.bidora import replace_for_bidora
+        replace_for_bidora()
         for param in self.model.parameters():
             param.requires_grad = True
         from betty.configs import EngineConfig, Config
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(
             self.args.max_steps, inner_optimizer, outer_optimizer)
-        precision = 'fp16'
-        # precision = 'fp32'
+        # precision = 'fp16'
+        precision = 'fp32'
         inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision=precision)
         outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision=precision)
         engine_config = EngineConfig(

@@ -154,7 +154,7 @@ def train(
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             load_in_8bit=load_8bit,
-            # torch_dtype=torch.float16,
+            torch_dtype=torch.float16,
             device_map=device_map,
             trust_remote_code=True,
         )
@@ -162,7 +162,7 @@ def train(
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             load_in_8bit=False,
-            # torch_dtype=torch.float16,
+            torch_dtype=torch.float16,
             device_map={"": int(os.environ.get("LOCAL_RANK") or 0)},
             trust_remote_code=True,
         )

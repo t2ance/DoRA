@@ -585,7 +585,8 @@ class BiDoRATrainer(transformers.Trainer):
         }
 
         if not isinstance(dataset, torch.utils.data.IterableDataset):
-            dataloader_params["sampler"] = self._get_train_sampler()
+            # dataloader_params["sampler"] = self._get_train_sampler()
+            dataloader_params["sampler"] = RandomSampler(dataset)
             dataloader_params["drop_last"] = self.args.dataloader_drop_last
             dataloader_params["worker_init_fn"] = seed_worker
             dataloader_params["prefetch_factor"] = None

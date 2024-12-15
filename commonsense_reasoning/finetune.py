@@ -667,7 +667,7 @@ class BiDoRATrainer(transformers.Trainer):
         outer_parameter_groups = [{
             "params": outer_params_list, "weight_decay": self.args.outer_weight_decay,
         }]
-        from torch.optim import AdamW, SGD
+        from torch.optim import AdamW, SGD, ASGD, Rprop
 
         optimizer_kwargs = {
             "betas": (self.args.adam_beta1, self.args.adam_beta2),

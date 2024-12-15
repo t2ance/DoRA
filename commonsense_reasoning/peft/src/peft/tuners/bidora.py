@@ -833,7 +833,7 @@ def llama_mlp_forward(self, x, alphas=None):
         ]
         down_proj = sum(down_proj)
     else:
-        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x, alphas=alphas), alphas=alphas)
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x, alphas=alphas['up_proj']), alphas=alphas['down_proj'])
 
     return down_proj
 

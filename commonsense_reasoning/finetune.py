@@ -470,7 +470,8 @@ class BiDoRAProblem(ImplicitProblem, ABC):
 
 class Inner(BiDoRAProblem):
     def training_step(self, batch):
-        print(batch)
+        # print(batch)
+        print('Inner Problem')
         batch = {key: value.to(self.device) for key, value in batch.items()}
         loss = self.module(**batch, return_dict=True, alphas=self.outer()).loss
         wandb.log({
@@ -483,6 +484,7 @@ class Inner(BiDoRAProblem):
 
 class Outer(BiDoRAProblem):
     def training_step(self, batch):
+        print('Outer Problem')
         batch = {key: value.to(self.device) for key, value in batch.items()}
         loss = self.inner.module(**batch, return_dict=True, alphas=self.forward()).loss
         wandb.log({
@@ -679,8 +681,8 @@ class BiDoRATrainer(transformers.Trainer):
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(
             self.args.max_steps, inner_optimizer, outer_optimizer)
-        # precision = 'fp16'
-        precision = 'fp32'
+        precision = 'fp16'
+        # precision = 'fp32'
         inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision=precision)
         outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision=precision)
         engine_config = EngineConfig(

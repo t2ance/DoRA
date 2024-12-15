@@ -129,7 +129,7 @@ class BiDoraModel(torch.nn.Module):
     """
 
     def __init__(self, config, model):
-        print('Initializing BiDoRA model')
+        # print('Initializing BiDoRA model')
         super().__init__()
         self.peft_config = config
         self.model = model
@@ -235,7 +235,7 @@ class BiDoraModel(torch.nn.Module):
         return parent, target, target_name
 
     def _replace_module(self, parent_module, child_name, new_module, old_module, module_name):
-        print(f'BiDoRA: replace module {module_name}')
+        # print(f'BiDoRA: replace module {module_name}')
         setattr(parent_module, child_name, new_module)
         new_module.weight = old_module.weight
 
@@ -419,7 +419,7 @@ class Linear(nn.Linear, LoraLayer):
 
     def forward(self, x: torch.Tensor, alphas = None):
         assert alphas is not None, 'alphas cannot be None in BiDoRA module'
-        print(f'BiDoRA forward alphas {alphas}')
+        # print(f'BiDoRA forward alphas {alphas}')
         previous_dtype = self.weight.dtype
 
         # magnitude = self.weight_m_wdecomp.weight
@@ -428,7 +428,7 @@ class Linear(nn.Linear, LoraLayer):
             raise NotImplementedError
 
         elif not self.merged:
-            print('bidora forward')
+            # print('bidora forward')
             norm_scale = magnitude.view(-1) / (torch.linalg.norm(self.weight, dim=1))
 
             org_result = (F.linear(x, transpose(self.weight, self.fan_in_fan_out)))
@@ -517,7 +517,7 @@ if is_bnb_available():
 
 from transformers.models.llama.modeling_llama import *
 
-print('Replacing Llama modules for BiDoRA')
+# print('Replacing Llama modules for BiDoRA')
 
 
 @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
@@ -569,7 +569,7 @@ def llama_for_causal_lm_forward_for_bidora(
     >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
     "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
     ```"""
-    print('forward_for_bidora')
+    # print('forward_for_bidora')
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
     output_hidden_states = (
         output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states

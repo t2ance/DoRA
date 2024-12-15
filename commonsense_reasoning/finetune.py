@@ -566,6 +566,11 @@ class BiDoRATrainer(transformers.Trainer):
         print(self.alphas)
         print("alphas' parameter list size")
         print(len(list(self.alphas.parameters())))
+
+        for name, param in self.model.named_parameters():
+            print(f"Inner Parameter: {name} | Type: {param.type()}")
+        for name, param in self.alphas.named_parameters():
+            print(f"Outer Parameter: {name} | Type: {param.type()}")
         wandb.init(project='dora', name='bidora commonsense reasoning', config=asdict(self.args))
 
     def get_train_dataloader(self, dataset=None) -> DataLoader:

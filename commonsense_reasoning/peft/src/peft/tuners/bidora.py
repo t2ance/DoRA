@@ -133,8 +133,8 @@ class BiDoraModel(torch.nn.Module):
         super().__init__()
         self.peft_config = config
         self.model = model
-        self._find_and_replace()
         self.magnitude_dict = {}
+        self._find_and_replace()
         mark_only_lora_as_trainable(self.model, self.peft_config.bias)
         self.forward = self.model.forward
 
@@ -244,7 +244,7 @@ class BiDoraModel(torch.nn.Module):
             magnitude = (torch.linalg.norm(new_module.weight.detach(), dim=1)).unsqueeze(1).detach()
             # FIXME
             # new_module.weight_m_wdecomp.weight.copy_(magnitude)
-            self.magnitude_dict[module_name] = magnitude
+            # self.magnitude_dict[module_name] = magnitude
 
         if old_module.bias is not None:
             new_module.bias = old_module.bias

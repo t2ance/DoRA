@@ -417,13 +417,13 @@ class Linear(nn.Linear, LoraLayer):
         incremental = self.lora_B.weight @ self.lora_A.weight
         return
 
-    def forward(self, x: torch.Tensor, alphas: torch.Tensor = None):
+    def forward(self, x: torch.Tensor, alphas = None):
         assert alphas is not None, 'alphas cannot be None in BiDoRA module'
         print(f'BiDoRA forward alphas {alphas}')
         previous_dtype = self.weight.dtype
 
         # magnitude = self.weight_m_wdecomp.weight
-        magnitude = alphas
+        magnitude = alphas.magnitude
         if self.disable_adapters:
             raise NotImplementedError
 

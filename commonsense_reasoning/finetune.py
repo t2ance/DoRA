@@ -334,7 +334,7 @@ def train(
     print('PEFT model', model.__class__.__name__)
     print('PEFT base model', model.base_model.__class__.__name__)
     if bilevel:
-        train_split = train_data.train_test_split(test_size=0.2)
+        train_split = train_data.train_test_split(test_size=0.2, shuffle=True)
         inner_train_data, outer_train_data = train_split['train'], train_split['test']
         print(f'Inner training dataset size: {len(inner_train_data)}')
         print(f'Outer training dataset size: {len(outer_train_data)}')

@@ -40,6 +40,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer  # 
 class PEFTTrainingArguments(transformers.TrainingArguments):
     outer_learning_rate: float = field(default=5e-5, metadata={"help": "The initial learning rate for AdamW."})
     outer_weight_decay: float = field(default=0.0, metadata={"help": "Weight decay for AdamW if we apply some."})
+    target_modules: List = field(default=None)
 
 
 def train(
@@ -501,8 +502,9 @@ class BilevelEngine(Engine):
 
 from dataclasses import asdict
 
-
 from peft.tuners.bidora import LoraLayer
+
+
 def is_bidora_layer(module):
     print('Checking bidora layer...')
     print(f'Module name {module.__class__.__name__}')
@@ -512,30 +514,37 @@ def is_bidora_layer(module):
 
 class BiDoRAArchitecture(torch.nn.Module):
 
-    def __init__(self, model):
+    def __init__(self, model, target_modules):
         super(BiDoRAArchitecture, self).__init__()
-        magnitudes_query = []
-        magnitudes_value = []
+
+        magnitude_lists = {module: [] for module in target_modules}
+
         for module_name, module in model.named_modules():
             if is_bidora_layer(module):
                 with torch.no_grad():
-                    magnitude = (torch.linalg.norm(module.weight.detach(), dim=1)).unsqueeze(1).detach()
-                    # magnitude = module.weight.norm(p=2, dim=0, keepdim=False)
+                    magnitude = torch.linalg.norm(module.weight, dim=1).unsqueeze(1)
+
                 print(f'Initialize from module {module_name}')
-                if 'query' in module_name or 'q_proj' in module_name:
-                    magnitudes_query.append(magnitude)
-                elif 'value' in module_name or 'v_proj' in module_name:
-                    magnitudes_value.append(magnitude)
-                else:
-                    raise NotImplementedError(f'Unknown BiDoRA module: {module_name}')
-        assert len(magnitudes_query) == len(magnitudes_value)
-        self.alpha = nn.ModuleList()
-        for i, (query, value) in enumerate(zip(magnitudes_query, magnitudes_value)):
-            q_v_pair = nn.ParameterList([nn.Parameter(query), nn.Parameter(value)])
-            self.alpha.append(q_v_pair)
+                for target_module in target_modules:
+                    if target_module in module_name:
+                        magnitude_lists[target_module].append(magnitude)
+                        print(f'{module_name} added to {target_module} list!')
+
+        lengths = [len(lst) for lst in magnitude_lists.values()]
+        assert len(set(lengths)) == 1, "All target_module lists must have the same length"
+        num_layers = lengths[0]
+
+        self.magnitudes = nn.ModuleList()
+        for i in range(num_layers):
+            layer_dict = nn.ModuleDict()
+            for module in target_modules:
+                layer_dict[module] = nn.Parameter(magnitude_lists[module][i].clone(), requires_grad=False)
+            self.magnitudes.append(layer_dict)
+
+        print(f'BiDoRAArchitecture initialized with {num_layers} layers.')
 
     def forward(self):
-        return self.alpha
+        return self.alphas
 
 
 class BiDoRATrainer(transformers.Trainer):
@@ -544,7 +553,7 @@ class BiDoRATrainer(transformers.Trainer):
         super().__init__(**kwargs)
         self.args: PEFTTrainingArguments = kwargs['args']
         self.outer_train_dataset = outer_train_dataset
-        self.alphas = BiDoRAArchitecture(self.model)
+        self.alphas = BiDoRAArchitecture(self.model, self.args.target_modules)
         print('BiDoRA architecture alphas')
         print(self.alphas)
         print("alphas' parameter list")

@@ -705,8 +705,8 @@ def llama_model_forward_for_bidora(
             )
         else:
             layer_outputs = decoder_layer(
-                alphas[i] if alphas is not None else alphas,
-                hidden_states,
+                alphas=alphas[i] if alphas is not None else alphas,
+                hidden_states=hidden_states,
                 attention_mask=causal_mask,
                 position_ids=position_ids,
                 past_key_value=past_key_values,

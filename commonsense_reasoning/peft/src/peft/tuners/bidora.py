@@ -255,7 +255,7 @@ class BiDoraModel(torch.nn.Module):
         # dispatch to correct device
         for name, module in new_module.named_modules():
             if "lora_" in name or "weight_m_wdecomp" in name:
-                module.to(old_module.weight.device, dtype=torch.float16)
+                module.to(old_module.weight.device)
 
     def __getattr__(self, name: str):
         """Forward missing attributes to the wrapped module."""

@@ -545,7 +545,7 @@ def is_bidora_layer(module):
 class DoRAMagnitude(nn.Module):
     def __init__(self, magnitude):
         super(DoRAMagnitude, self).__init__()
-        self.magnitude = nn.Parameter(magnitude.clone(), requires_grad=False)
+        self.magnitude = nn.Parameter(magnitude.clone(), requires_grad=True)
 
 
 class BiDoRAArchitecture(torch.nn.Module):
@@ -708,8 +708,8 @@ class BiDoRATrainer(transformers.Trainer):
             **kwargs,
     ):
 
-        for param in self.model.parameters():
-            param.requires_grad = True
+        # for param in self.model.parameters():
+        #     param.requires_grad = True
         from betty.configs import EngineConfig, Config
         inner_optimizer, outer_optimizer = self.create_optimizer()
         inner_scheduler, outer_scheduler = self.create_scheduler(

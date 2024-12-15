@@ -550,7 +550,7 @@ class BiDoRAArchitecture(torch.nn.Module):
         print(f'BiDoRAArchitecture initialized with {num_layers} layers.')
 
     def forward(self):
-        return self.alphas
+        return self.magnitudes
 
 
 class BiDoRATrainer(transformers.Trainer):

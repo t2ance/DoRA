@@ -671,8 +671,7 @@ class BiDoRATrainer(transformers.Trainer):
             ignore_keys_for_eval: Optional[List[str]] = None,
             **kwargs,
     ):
-        from peft.tuners.bidora import replace_for_bidora
-        replace_for_bidora()
+
         for param in self.model.parameters():
             param.requires_grad = True
         from betty.configs import EngineConfig, Config

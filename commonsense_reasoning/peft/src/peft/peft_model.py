@@ -534,6 +534,7 @@ class PeftModelForCausalLM(PeftModel):
 
     def forward(
             self,
+            alphas=None,
             input_ids=None,
             attention_mask=None,
             inputs_embeds=None,
@@ -546,6 +547,7 @@ class PeftModelForCausalLM(PeftModel):
         if not isinstance(self.peft_config, PromptLearningConfig):
             return self.base_model(
                 input_ids=input_ids,
+                alphas=alphas,
                 attention_mask=attention_mask,
                 inputs_embeds=inputs_embeds,
                 labels=labels,

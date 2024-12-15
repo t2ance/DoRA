@@ -360,6 +360,7 @@ def train(
                 output_dir=output_dir,
                 group_by_length=group_by_length,
                 run_name=wandb_run_name if use_wandb else None,
+                target_modules=target_modules
             ),
             data_collator=transformers.DataCollatorForSeq2Seq(
                 tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
@@ -516,7 +517,7 @@ class BiDoRAArchitecture(torch.nn.Module):
 
     def __init__(self, model, target_modules):
         super(BiDoRAArchitecture, self).__init__()
-
+        print(f'Initializing bidora architecture with target modules {target_modules}')
         magnitude_lists = {module: [] for module in target_modules}
 
         for module_name, module in model.named_modules():

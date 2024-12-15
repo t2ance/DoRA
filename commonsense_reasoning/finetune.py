@@ -469,6 +469,32 @@ class BiDoRAProblem(ImplicitProblem, ABC):
         # print('return from get_batch_single_loader', batch)
         return batch
 
+    def optimizer_step(self, *args, **kwargs):
+        if self.is_implemented("custom_optimizer_step"):
+            if self.gradient_clipping > 0.0:
+                self.clip_grad()
+            self.custom_optimizer_step(*args, **kwargs)
+        else:
+            if self.scaler is not None:
+                # self.scaler.unscale_(self.optimizer)
+                if self.gradient_clipping > 0.0:
+                    self.clip_grad()
+                self.scaler.step(self.optimizer)
+                if self.config.type in ["sama"]:
+                    for param in self.trainable_parameters():
+                        state = self.get_opt_state_for_param(param)
+                        if param.grad is not None and len(state) != 0:
+                            state["last_grad"] = param.grad.detach().clone()
+                self.scaler.update()
+            else:
+                if self.gradient_clipping > 0.0:
+                    self.clip_grad()
+                self.optimizer.step()
+                if self.config.type in ["sama"]:
+                    for param in self.trainable_parameters():
+                        state = self.get_opt_state_for_param(param)
+                        if param.grad is not None and len(state) != 0:
+                            state["last_grad"] = param.grad.detach().clone()
 
 class Inner(BiDoRAProblem):
     def training_step(self, batch):

@@ -502,10 +502,12 @@ class BilevelEngine(Engine):
 from dataclasses import asdict
 
 
+from peft.tuners.bidora import LoraLayer
 def is_bidora_layer(module):
     print('Checking bidora layer...')
     print(f'Module name {module.__class__.__name__}')
-    return 'bidora' in module.__class__.__name__
+    # return 'bidora' in module.__class__.__name__
+    return isinstance(module, LoraLayer)
 
 
 class BiDoRAArchitecture(torch.nn.Module):
@@ -516,7 +518,9 @@ class BiDoRAArchitecture(torch.nn.Module):
         magnitudes_value = []
         for module_name, module in model.named_modules():
             if is_bidora_layer(module):
-                magnitude = module.weight.norm(p=2, dim=0, keepdim=False)
+                with torch.no_grad():
+                    magnitude = (torch.linalg.norm(module.weight.detach(), dim=1)).unsqueeze(1).detach()
+                    # magnitude = module.weight.norm(p=2, dim=0, keepdim=False)
                 print(f'Initialize from module {module_name}')
                 if 'query' in module_name or 'q_proj' in module_name:
                     magnitudes_query.append(magnitude)

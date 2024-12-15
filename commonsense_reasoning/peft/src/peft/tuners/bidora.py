@@ -129,13 +129,14 @@ class BiDoraModel(torch.nn.Module):
     """
 
     def __init__(self, config, model):
-        print('Initialing BiDoRA model')
+        print('Initializing BiDoRA model')
         super().__init__()
         self.peft_config = config
         self.model = model
         self._find_and_replace()
         mark_only_lora_as_trainable(self.model, self.peft_config.bias)
         self.forward = self.model.forward
+        self.magnitude_dict = {}
 
     def _find_and_replace(self):
         loaded_in_8bit = getattr(self.model, "is_loaded_in_8bit", False)
@@ -194,7 +195,7 @@ class BiDoraModel(torch.nn.Module):
                 elif self.peft_config.enable_lora is not None:
                     raise NotImplementedError
 
-                self._replace_module(parent, target_name, new_module, target)
+                self._replace_module(parent, target_name, new_module, target, key)
 
             elif wdecompose_target_module_found:
                 if not is_target_modules_in_base_model:
@@ -219,7 +220,7 @@ class BiDoraModel(torch.nn.Module):
                     new_module = Linear(target.in_features, target.out_features, bias=bias, Wdecompose=True, **kwargs)
                 elif self.peft_config.enable_lora is not None:
                     raise NotImplementedError
-                self._replace_module(parent, target_name, new_module, target)
+                self._replace_module(parent, target_name, new_module, target, key)
 
         if not is_target_modules_in_base_model:
             raise ValueError(
@@ -233,14 +234,17 @@ class BiDoraModel(torch.nn.Module):
         target = self.model.get_submodule(key)
         return parent, target, target_name
 
-    def _replace_module(self, parent_module, child_name, new_module, old_module):
+    def _replace_module(self, parent_module, child_name, new_module, old_module, module_name):
+        print(f'BiDoRA: replace module {module_name}')
         setattr(parent_module, child_name, new_module)
         new_module.weight = old_module.weight
 
         # 
         with torch.no_grad():
             magnitude = (torch.linalg.norm(new_module.weight.detach(), dim=1)).unsqueeze(1).detach()
-            new_module.weight_m_wdecomp.weight.copy_(magnitude)
+            # FIXME
+            # new_module.weight_m_wdecomp.weight.copy_(magnitude)
+            self.magnitude_dict[module_name] = magnitude
 
         if old_module.bias is not None:
             new_module.bias = old_module.bias

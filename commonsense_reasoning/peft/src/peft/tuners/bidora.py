@@ -240,8 +240,8 @@ class BiDoraModel(torch.nn.Module):
         new_module.weight = old_module.weight
 
         # 
-        with torch.no_grad():
-            magnitude = (torch.linalg.norm(new_module.weight.detach(), dim=1)).unsqueeze(1).detach()
+        # with torch.no_grad():
+        #     magnitude = (torch.linalg.norm(new_module.weight.detach(), dim=1)).unsqueeze(1).detach()
             # FIXME
             # new_module.weight_m_wdecomp.weight.copy_(magnitude)
             # self.magnitude_dict[module_name] = magnitude
@@ -255,7 +255,7 @@ class BiDoraModel(torch.nn.Module):
         # dispatch to correct device
         for name, module in new_module.named_modules():
             if "lora_" in name or "weight_m_wdecomp" in name:
-                module.to(old_module.weight.device)
+                module.to(old_module.weight.device, dtype=torch.float16)
 
     def __getattr__(self, name: str):
         """Forward missing attributes to the wrapped module."""

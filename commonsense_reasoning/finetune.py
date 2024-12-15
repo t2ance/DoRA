@@ -496,6 +496,7 @@ class BiDoRAProblem(ImplicitProblem, ABC):
                         if param.grad is not None and len(state) != 0:
                             state["last_grad"] = param.grad.detach().clone()
 
+
 class Inner(BiDoRAProblem):
     def training_step(self, batch):
         # print(batch)
@@ -643,13 +644,7 @@ class BiDoRATrainer(transformers.Trainer):
         We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
         Trainer's init through `optimizers`, or subclass and override this method in a subclass.
         """
-        from torch.optim import AdamW
 
-        optimizer_kwargs = {
-            "betas": (self.args.adam_beta1, self.args.adam_beta2),
-            "eps": self.args.adam_epsilon,
-            "fused": True
-        }
         inner_params_list = []
         outer_params_list = []
         for name, param in self.model.named_parameters():
@@ -672,9 +667,17 @@ class BiDoRATrainer(transformers.Trainer):
         outer_parameter_groups = [{
             "params": outer_params_list, "weight_decay": self.args.outer_weight_decay,
         }]
+        from torch.optim import AdamW, SGD
 
-        inner_optimizer = AdamW(inner_parameter_groups, **{**optimizer_kwargs, "lr": self.args.learning_rate})
-        outer_optimizer = AdamW(outer_parameter_groups, **{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
+        optimizer_kwargs = {
+            "betas": (self.args.adam_beta1, self.args.adam_beta2),
+            "eps": self.args.adam_epsilon,
+            "fused": True
+        }
+        # inner_optimizer = AdamW(inner_parameter_groups, **{**optimizer_kwargs, "lr": self.args.learning_rate})
+        # outer_optimizer = AdamW(outer_parameter_groups, **{**optimizer_kwargs, "lr": self.args.outer_learning_rate})
+        inner_optimizer = SGD(inner_parameter_groups, **{"lr": self.args.learning_rate})
+        outer_optimizer = SGD(outer_parameter_groups, **{"lr": self.args.outer_learning_rate})
         print('#Inner params', self.count_optimized_parameters(inner_parameter_groups))
         print('#Outer params', self.count_optimized_parameters(outer_parameter_groups))
         return inner_optimizer, outer_optimizer

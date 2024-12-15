@@ -717,7 +717,7 @@ class BiDoRATrainer(transformers.Trainer):
         precision = 'fp16'
         # precision = 'fp32'
         inner_config = Config(type="darts", unroll_steps=1, gradient_accumulation=1, precision=precision)
-        outer_config = Config(type="darts", retain_graph=True, gradient_accumulation=1, precision=precision)
+        outer_config = Config(type="darts", retain_graph=False, gradient_accumulation=1, precision=precision)
         engine_config = EngineConfig(
             train_iters=self.args.max_steps, valid_step=self.args.eval_steps)
         inner_dataloader = self.get_train_dataloader(dataset=self.train_dataset)

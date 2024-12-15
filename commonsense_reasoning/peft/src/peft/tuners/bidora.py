@@ -134,9 +134,9 @@ class BiDoraModel(torch.nn.Module):
         self.peft_config = config
         self.model = model
         self._find_and_replace()
+        self.magnitude_dict = {}
         mark_only_lora_as_trainable(self.model, self.peft_config.bias)
         self.forward = self.model.forward
-        self.magnitude_dict = {}
 
     def _find_and_replace(self):
         loaded_in_8bit = getattr(self.model, "is_loaded_in_8bit", False)

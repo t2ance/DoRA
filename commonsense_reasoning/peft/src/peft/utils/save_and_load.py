@@ -25,7 +25,7 @@
 from .config import PeftType
 
 
-def get_peft_model_state_dict(model, state_dict=None):
+def get_peft_model_state_dict(model, state_dict=None, magnitudes=None):
     """
     Get the state dict of the Peft model.
 

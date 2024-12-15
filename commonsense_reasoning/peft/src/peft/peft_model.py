@@ -117,7 +117,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         os.makedirs(save_directory, exist_ok=True)
 
         # save only the trainable weights
-        output_state_dict = get_peft_model_state_dict(self, kwargs.get("state_dict", None))
+        output_state_dict = get_peft_model_state_dict(self, kwargs.get("state_dict", None), **kwargs)
         torch.save(output_state_dict, os.path.join(save_directory, WEIGHTS_NAME))
 
         # save the config and change the inference mode to `True`

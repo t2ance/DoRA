@@ -375,7 +375,6 @@ def train(
             )
         ).__get__(model, type(model))
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
-        model.save_pretrained(output_dir)
     else:
         trainer = transformers.Trainer(
             model=model,
@@ -700,6 +699,7 @@ class BiDoRATrainer(transformers.Trainer):
         dependencies = {"l2u": l2u, "u2l": u2l}
         engine = BilevelEngine(config=engine_config, problems=problems, dependencies=dependencies)
         engine.run()
+        self.model.save_pretrained(self.args.output_dir, magnitudes=self.alphas)
 
 
 def compute_magnitude_regularization(alphas):

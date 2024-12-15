@@ -376,6 +376,8 @@ def train(
         ).__get__(model, type(model))
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     else:
+        for name, param in model.named_parameters():
+            print(f"Llama (DoRA) Parameter: {name} | Type: {param.type()}")
         trainer = transformers.Trainer(
             model=model,
             train_dataset=train_data,
